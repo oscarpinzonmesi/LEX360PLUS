@@ -1,0 +1,54 @@
+# --- Archivos y carpetas de Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+
+# --- Entornos virtuales ---
+.env
+.venv
+env/
+venv/
+
+# --- Configuración de IDEs ---
+.vscode/
+.idea/
+*.code-workspace
+
+# --- Archivos de base de datos ---
+*.db
+*.sqlite3
+
+# --- Archivos de migraciones ---
+alembic/versions/*.py
+
+# --- Archivos de sistema ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Archivos temporales ---
+*.log
+*.tmp
+*.bak
+*.swp
+
+# --- Documentos privados o pesados (no deben ir en GitHub) ---
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.exe
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.zip
+*.rar
+
+# --- Carpetas de documentos guardados (no deben subirse) ---
+Documentos_Guardados/
+documentos_almacenados/
+SELECTA_SCAM/Documentos_Guardados/
