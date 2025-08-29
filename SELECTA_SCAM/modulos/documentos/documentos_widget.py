@@ -1824,6 +1824,10 @@ class DocumentosModule(QWidget):
         except Exception as e:
             logger.error(f"Error al ejecutar búsqueda en el controlador: {e}")
             self.mostrar_error("Error de Búsqueda", f"No se pudieron cargar los documentos: {e}")
+                # 👇 Ajuste: si estamos en modo papelera y ya no hay documentos → volver a documentos activos
+            if self.mostrando_papelera and self.documentos_model.rowCount() == 0:
+                logger.info("Papelera vacía → retornando automáticamente a Documentos Activos.")
+                self.mostrar_documentos_activos()
 
     
     def limpiar_filtros_busqueda(self):
