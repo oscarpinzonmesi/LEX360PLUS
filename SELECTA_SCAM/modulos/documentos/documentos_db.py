@@ -37,25 +37,30 @@ class DocumentosDB:
                     archivo: str = None, ruta_completa: str = None) -> Documento | None:
         """
         Agrega un nuevo documento a la base de datos.
-        - `ruta_completa` se recibe pero no se guarda en la BD (solo se usa en memoria).
         """
-        from ...db.models import Documento  # asegurar import correcto
+        from ...db.models import Documento
+        import os
 
         if fecha_subida is None:
             fecha_subida = datetime.now()
+
+        # si no viene 'archivo', usamos el mismo nombre de ubicacion_archivo
+        if not archivo:
+            archivo = ubicacion_archivo
 
         try:
             with self.get_session() as session:
                 nuevo_doc = Documento(
                     cliente_id=cliente_id,
                     nombre=nombre,
+                    archivo=archivo,                # 👈 importante para NOT NULL
                     ubicacion_archivo=ubicacion_archivo,
                     tipo_documento=tipo_documento,
                     fecha_subida=fecha_subida,
                     eliminado=False
                 )
                 session.add(nuevo_doc)
-                session.flush()  # asegura que el ID se genere
+                session.flush()
                 self.logger.info(f"Documento agregado con ID {nuevo_doc.id}")
                 return nuevo_doc
         except Exception as e:
