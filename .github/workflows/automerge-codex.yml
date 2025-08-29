@@ -1,0 +1,42 @@
+name: Auto Merge Codex PRs
+
+on:
+  pull_request:
+    branches:
+      - develop   # Todos los PRs que lleguen a develop
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "codex-bot"
+          git config --global user.email "codex-bot@github.com"
+
+      - name: Merge PR using ours strategy
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          git fetch origin pull/$PR_NUMBER/head:pr-${PR_NUMBER}
+          git checkout develop
+          git merge -s ours pr-${PR_NUMBER} -m "Auto-merge PR #${PR_NUMBER} from Codex"
+          git push origin develop
+
+      - name: Auto merge to main (optional)
+        if: success()
+        run: |
+          git checkout main
+          git merge develop -s ours -m "Sync develop → main (Codex auto)"
+          git push origin main
