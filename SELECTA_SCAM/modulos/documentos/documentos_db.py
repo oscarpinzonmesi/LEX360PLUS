@@ -32,6 +32,35 @@ class DocumentosDB:
 
     # SELECTA_SCAM/modulos/documentos/documentos_db.py
 
+    def add_documento(self, cliente_id: int, nombre: str, ubicacion_archivo: str,
+                      tipo_documento: str = None, fecha_subida: datetime = None) -> Documento | None:
+        """
+        Agrega un nuevo documento a la base de datos.
+        """
+        from ...db.models import Documento  # asegurar import correcto
+
+        if fecha_subida is None:
+            fecha_subida = datetime.now()
+
+        try:
+            with self.get_session() as session:
+                nuevo_doc = Documento(
+                    cliente_id=cliente_id,
+                    nombre=nombre,
+                    ubicacion_archivo=ubicacion_archivo,
+                    tipo_documento=tipo_documento,
+                    fecha_subida=fecha_subida,
+                    eliminado=False
+                )
+                session.add(nuevo_doc)
+                session.flush()  # asegura que el ID se genere
+                self.logger.info(f"Documento agregado con ID {nuevo_doc.id}")
+                return nuevo_doc
+        except Exception as e:
+            self.logger.error(f"Error al agregar documento: {e}", exc_info=True)
+            return None
+
+
     def get_documentos_filtered_as_tuples(self, **filters) -> list:
         """
         Obtiene los documentos como tuplas, con las columnas en el orden exacto que la tabla necesita.
