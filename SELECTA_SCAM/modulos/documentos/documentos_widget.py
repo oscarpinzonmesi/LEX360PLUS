@@ -1461,6 +1461,8 @@ class DocumentosModule(QWidget):
                 self.load_initial_data_into_view()
             else:
                 QMessageBox.critical(self, "Error", "Hubo un error al enviar uno o más documentos a la papelera.")
+                if self.table_model.rowCount() == 0:
+                    self.toggle_papelera_view()
 
     def toggle_papelera_view(self):
         # Ocultar tooltip al interactuar
