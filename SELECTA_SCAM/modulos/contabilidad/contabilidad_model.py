@@ -148,4 +148,4 @@ class ContabilidadModel:
         with self.contabilidad_db.get_session() as session:
             return [t.nombre for t in session.query(TipoContable).filter(TipoContable.es_ingreso == False).all()]
 
-            hola 
+  
