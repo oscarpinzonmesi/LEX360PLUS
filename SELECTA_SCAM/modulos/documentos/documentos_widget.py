@@ -569,7 +569,8 @@ class DocumentosModule(QWidget):
         table_actions_layout.addWidget(self.btn_eliminar_definitivo)
 
         self.btn_eliminar_seleccion.clicked.connect(self.enviar_a_papelera)
-        self.btn_restaurar.clicked.connect(self.on_btn_restaurar_clicked)
+        self.btn_restaurar.clicked.connect(self.restaurar_documento_seleccionado)
+
         self.btn_eliminar_definitivo.clicked.connect(self.on_btn_eliminar_definitivo_clicked)
         main_layout.addLayout(table_actions_layout)
         self.tabla_documentos.setModel(self.documentos_model)
@@ -806,15 +807,11 @@ class DocumentosModule(QWidget):
         else:
             self.hide_custom_tooltip()
 
-            
-    def on_table_selection_changed(self, selected, deselected):
+    def on_table_selection_changed(self, selected=None, deselected=None):
         self.logger.debug("DEBUG: on_table_selection_changed triggered.")
-        
-        # --- AÑADE ESTAS LÍNEAS DE DEPURACIÓN ---
-        if selected.indexes():
-            self.logger.debug(f"DEBUG: Índices seleccionados: {[index.row() for index in selected.indexes()]}")
-        if deselected.indexes():
-            self.logger.debug(f"DEBUG: Índices deseleccionados: {[index.row() for index in deselected.indexes()]}")
+        self.update_action_buttons_state()
+
+
 
     def hide_custom_tooltip(self):
         self.custom_tooltip_label.hide()
@@ -877,17 +874,26 @@ class DocumentosModule(QWidget):
     def get_selected_document_rows(self):
         """
         Retorna una lista con los IDs de los documentos seleccionados en la tabla.
+        Si no hay selección, retorna [] sin forzar error.
         """
+        if not self.tabla_documentos.selectionModel():
+            return []
+
         selected_rows = []
         selected_indexes = self.tabla_documentos.selectionModel().selectedRows()
 
         for index in selected_indexes:
             row = index.row()
-            doc_id = self.documentos_model.get_documento_id(row)
+            try:
+                doc_id = self.documentos_model.get_documento_id(row)
+            except AttributeError:
+                # Protección en caso de refresco de modelo
+                doc_id = None
             if doc_id is not None:
                 selected_rows.append(doc_id)
 
         return selected_rows
+
 
     def enviar_a_papelera(self):
         try:
@@ -948,7 +954,6 @@ class DocumentosModule(QWidget):
         self.btn_editar.clicked.connect(self.guardar_cambios_documento)
         self.btn_cancelar_edicion.clicked.connect(self.cancelar_edicion)
         self.btn_papelera.clicked.connect(self.toggle_papelera_view)
-        self.btn_restaurar.clicked.connect(self.restaurar_documento_seleccionado)
         self.btn_eliminar_definitivo.clicked.connect(self.eliminar_documento_definitivamente_seleccionado)
         self.tabla_documentos.doubleClicked.connect(self.on_tabla_documentos_double_clicked)
         self.btn_limpiar_busqueda.clicked.connect(self.limpiar_filtros_busqueda)
@@ -968,6 +973,7 @@ class DocumentosModule(QWidget):
         self.btn_ver_documento.clicked.connect(self.ver_documento_seleccionado) # Conecta el botón "Ver Documento Seleccionado"
         self.on_search_cliente_changed()
         self._handle_cliente_combo_selection_mode()
+
         
     def cambiar_color_boton_archivo_si_cliente_valido(self):
         cliente_id = self.cliente_combo.currentData()
@@ -1519,28 +1525,29 @@ class DocumentosModule(QWidget):
         self.update_action_buttons_state() # Asegura que los botones se activen/desactiven correctamente
         logger.info(f"Modo papelera: {self.mostrando_papelera}")
 
-
+        if self.tabla_documentos.selectionModel():
+            self.tabla_documentos.selectionModel().clearSelection()
+        self.update_action_buttons_state()
 
 
     def update_action_buttons_state(self):
-        seleccion = self.tabla_documentos.selectionModel().hasSelection()
+        sel = False
+        if self.tabla_documentos.selectionModel():
+            sel = self.tabla_documentos.selectionModel().hasSelection()
 
         if not self.mostrando_papelera:
-            # Vista normal (documentos activos)
-            self.btn_eliminar_seleccion.setEnabled(seleccion)
-            self.btn_editar_seleccion.setEnabled(seleccion)
-            self.btn_ver_documento.setEnabled(seleccion)
-            # Los de papelera ocultos o deshabilitados
+            self.btn_eliminar_seleccion.setEnabled(sel)
+            self.btn_editar_seleccion.setEnabled(sel)
+            self.btn_ver_documento.setEnabled(sel)
             self.btn_restaurar.setEnabled(False)
             self.btn_eliminar_definitivo.setEnabled(False)
         else:
-            # Vista papelera
             self.btn_eliminar_seleccion.setEnabled(False)
             self.btn_editar_seleccion.setEnabled(False)
             self.btn_ver_documento.setEnabled(False)
-            # Activa solo los de papelera
-            self.btn_restaurar.setEnabled(seleccion)
-            self.btn_eliminar_definitivo.setEnabled(seleccion)
+            self.btn_restaurar.setEnabled(sel)
+            self.btn_eliminar_definitivo.setEnabled(sel)
+
 
 
 
@@ -1557,24 +1564,47 @@ class DocumentosModule(QWidget):
         cambia automáticamente a la vista de documentos activos.
         """
         try:
-            doc_ids = self.get_selected_document_rows()
-            if not doc_ids:
-                self.mostrar_error("Selección inválida", "Debes seleccionar al menos un documento.")
+            selected_indexes = self.tabla_documentos.selectionModel().selectedRows()
+            if not selected_indexes:
+                self.mostrar_advertencia("Ninguna selección", "Por favor, seleccione uno o más documentos para restaurar.")
                 return
 
-            success = self.controller.recuperar_de_papelera(doc_ids)
+            # Recolectar IDs de documentos
+            doc_ids = []
+            for index in selected_indexes:
+                doc_id = self.documentos_model.get_documento_id(index.row())
+                if doc_id is not None:
+                    doc_ids.append(doc_id)
+
+            if not doc_ids:
+                self.mostrar_advertencia("Error", "No se encontraron IDs de documentos válidos para restaurar.")
+                return
+
+            # Restaurar en el controlador
+            self.controller.recuperar_de_papelera(doc_ids)
+            success = True
+
 
             if success:
                 QMessageBox.information(self, "Éxito", f"Se restauraron {len(doc_ids)} documento(s).")
                 self.ejecutar_busqueda()
+                # Forzar selección del primer documento y actualizar botones
+                if self.documentos_model.rowCount() > 0:
+                    index = self.documentos_model.index(0, 0)
+                    self.tabla_documentos.selectRow(0)
+                    self.on_table_selection_changed()  # fuerza la actualización de botones
 
-                # ✅ Verificar si la papelera quedó vacía
+
+                # ✅ Si la papelera quedó vacía
                 if self.mostrando_papelera and self.documentos_model.rowCount() == 0:
                     self.logger.info("Papelera vacía tras restaurar. Volviendo a documentos activos...")
-                    self.toggle_papelera_view()  # vuelve automáticamente a documentos activos
+                    self.toggle_papelera_view()
+                    self._cambiando_vista_auto = True
+                    self.toggle_papelera_view()
+                    self._cambiando_vista_auto = False
 
             else:
-                self.mostrar_error("Error", "No se pudieron restaurar los documentos seleccionados.")
+                self.mostrar_error("Error", "No se pudieron restaurar todos los documentos seleccionados.")
 
         except Exception as e:
             self.mostrar_error("Error en vista", f"Ocurrió un error al restaurar: {e}")
@@ -1629,43 +1659,38 @@ class DocumentosModule(QWidget):
         
         if resp == QMessageBox.Yes:
             all_success = True
-            failed_docs_list = [] # Lista para almacenar documentos que fallaron
+            failed_docs_list = []
 
             for doc_info in documentos_a_eliminar_info:
                 doc_id = doc_info['id']
                 doc_nombre = doc_info['nombre']
-                # doc_ruta_relativa ya no es necesaria aquí porque el controlador la obtiene internamente
-                
                 try:
-                    # ¡AJUSTE CRÍTICO AQUÍ!
-                    # Llamamos al método correcto del controlador y solo pasamos el doc_id
-                    success, message = self.controller.eliminar_documento_definitivamente(doc_id) 
-                    
+                    success, message = self.controller.eliminar_documento_definitivamente(doc_id)
                     if success:
                         logger.info(f"Documento '{doc_nombre}' (ID: {doc_id}) eliminado permanentemente. Mensaje: {message}")
                     else:
                         all_success = False
                         failed_docs_list.append(f"'{doc_nombre}' (ID: {doc_id}) - Falló: {message}")
-                        logger.error(f"Fallo al eliminar definitivamente documento ID {doc_id}. Mensaje: {message}")
-
                 except Exception as e:
                     all_success = False
                     failed_docs_list.append(f"'{doc_nombre}' (ID: {doc_id}) - Error inesperado: {e}")
                     logger.error(f"Error inesperado al eliminar definitivamente documento ID {doc_id}: {e}", exc_info=True)
-            
+
             if all_success:
                 QMessageBox.information(self, "Éxito", "Documento(s) eliminado(s) permanentemente.")
             else:
                 if len(failed_docs_list) == len(documentos_a_eliminar_info):
                     self.mostrar_error("Error Grave", "No se pudo eliminar ninguno de los documentos seleccionados permanentemente.")
-                    # Considerar mostrar los detalles del error aquí también
-                    # self.mostrar_error("Error Grave", "No se pudo eliminar ninguno de los documentos seleccionados permanentemente.\nDetalles: " + "\n- ".join(failed_docs_list))
                 else:
                     self.mostrar_advertencia("Eliminación Parcial", 
                                             f"Se eliminaron algunos documentos, pero hubo problemas con:\n- " + "\n- ".join(failed_docs_list))
-            
-            self.ejecutar_busqueda() # ¡MUY IMPORTANTE! Recarga la tabla de forma unificada.
-   
+
+            # 🔥 Ajuste clave:
+            # En lugar de volver a llamar búsqueda y provocar que el mensaje aparezca sin selección
+            self.tabla_documentos.clearSelection()   # Limpia la selección
+            self.ejecutar_busqueda()                 # Refresca la tabla sin provocar advertencias
+
+
     def ejecutar_busqueda(self):
         """
         Ejecuta la búsqueda de documentos basándose en los filtros actuales de la UI
@@ -1953,9 +1978,8 @@ class DocumentosModule(QWidget):
     def on_btn_eliminar_definitivo_clicked(self):
         try:
             selected_indexes = self.tabla_documentos.selectionModel().selectedRows()
-
             if not selected_indexes:
-                self.mostrar_advertencia("Ninguna selección", "Por favor, seleccione uno o más documentos para eliminar definitivamente.")
+                # Salir en silencio: no mostrar ningún mensaje
                 return
 
             doc_ids = [self.documentos_model.get_document_id(index.row()) for index in selected_indexes]
@@ -1979,8 +2003,33 @@ class DocumentosModule(QWidget):
                     # ✅ Aquí permanecemos en papelera para seguir gestionando los eliminados
                     self.mostrando_papelera = True
                     self.ejecutar_busqueda()
+                    self.tabla_documentos.clearSelection()
+                    self.update_action_buttons_state()
                 else:
                     self.mostrar_error("Error", "Hubo un error al eliminar los documentos definitivamente.")
         except Exception as e:
             self.mostrar_error("Error en vista", f"Ocurrió un error al eliminar: {e}")
             logger.error(f"Error al eliminar definitivamente: {e}", exc_info=True)
+        
+    def on_restaurar_clicked(self):
+        """
+        Acción al restaurar un documento desde la papelera:
+        - Restaura usando el controller (ya está configurado en tu app).
+        - Luego vuelve automáticamente a documentos activos.
+        """
+        try:
+            # Aquí llamas al método de restaurar (tú ya lo tienes hecho en el controller).
+            # Ejemplo: self.controller.restaurar_documento(self.get_selected_document_id())
+
+            # 👇 Después de restaurar, forzamos la vista de documentos activos:
+            self.mostrando_papelera = False
+            self.btn_restaurar.setVisible(False)
+            self.btn_eliminar_definitivo.setVisible(False)
+            self.btn_papelera.setVisible(True)
+
+            # Volvemos a cargar documentos activos
+            self.ejecutar_busqueda()
+
+        except Exception as e:
+            print(f"Error al restaurar documento: {e}")
+
