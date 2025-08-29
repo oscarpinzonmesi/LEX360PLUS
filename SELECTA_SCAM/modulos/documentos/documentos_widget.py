@@ -1603,12 +1603,11 @@ class DocumentosModule(QWidget):
 
 
                 # ✅ Si la papelera quedó vacía
+                # ✅ Si la papelera quedó vacía
                 if self.mostrando_papelera and self.documentos_model.rowCount() == 0:
-                    self.logger.info("Papelera vacía tras restaurar. Volviendo a documentos activos...")
+                    logger.info("Papelera vacía tras restaurar. Volviendo a documentos activos...")
                     self.toggle_papelera_view()
-                    self._cambiando_vista_auto = True
-                    self.toggle_papelera_view()
-                    self._cambiando_vista_auto = False
+
 
             else:
                 self.mostrar_error("Error", "No se pudieron restaurar todos los documentos seleccionados.")
