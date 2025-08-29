@@ -1837,6 +1837,7 @@ class DocumentosModule(QWidget):
                 logger.info("Papelera vacía → retornando automáticamente a Documentos Activos.")
                 self.mostrar_documentos_activos()
 
+
     
     def limpiar_filtros_busqueda(self):
         self.logger.info("Limpiando todos los filtros de búsqueda...") # Añadí este log para trazar
