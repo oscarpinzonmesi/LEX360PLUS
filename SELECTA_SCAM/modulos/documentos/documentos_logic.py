@@ -41,7 +41,14 @@ class DocumentosLogic:
             if "nombre" not in data or not data["nombre"]:
                 data["nombre"] = os.path.splitext(os.path.basename(archivo))[0]  # nombre sin extensión
 
-        return self.db.add_documento(**data)
+        try:
+            nuevo_doc = self.db.add_documento(**data)
+            if not nuevo_doc:
+                raise Exception("Error al insertar el documento en la base de datos.")
+            return nuevo_doc
+        except Exception as e:
+            self.logger.error(f"Error en agregar_documento (logic): {e}", exc_info=True)
+            return None
 
 
     def editar_documento(self, doc_id: int, **data) -> bool:
