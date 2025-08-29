@@ -1598,6 +1598,8 @@ class DocumentosModule(QWidget):
                     index = self.documentos_model.index(0, 0)
                     self.tabla_documentos.selectRow(0)
                     self.on_table_selection_changed()  # fuerza la actualización de botones
+                    if self.table_model.rowCount() == 0:
+                        self.toggle_papelera_view()
 
 
                 # ✅ Si la papelera quedó vacía
