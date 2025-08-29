@@ -80,4 +80,3 @@ class DocumentosLogic:
         except Exception as e:
             self.logger.error("Error al eliminar documentos permanentemente: %s", e)
             return False
-    #mostremos uno de los cambos
