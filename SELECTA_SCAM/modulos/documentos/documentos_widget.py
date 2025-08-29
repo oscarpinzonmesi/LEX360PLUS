@@ -1461,8 +1461,6 @@ class DocumentosModule(QWidget):
                 self.load_initial_data_into_view()
             else:
                 QMessageBox.critical(self, "Error", "Hubo un error al enviar uno o más documentos a la papelera.")
-                if self.table_model.rowCount() == 0:
-                    self.toggle_papelera_view()
 
     def toggle_papelera_view(self):
         # Ocultar tooltip al interactuar
@@ -1558,9 +1556,6 @@ class DocumentosModule(QWidget):
         self.actualizar_tabla_documentos(documentos_en_papelera)
         if not documentos_en_papelera:
             self.mostrar_mensaje("Papelera Vacía", "No hay documentos en la papelera.")
-            if self.table_model.rowCount() == 0:
-                self.toggle_papelera_view()  # vuelve a vista principal
-
 
     def restaurar_documento_seleccionado(self):
         """
@@ -1598,16 +1593,15 @@ class DocumentosModule(QWidget):
                     index = self.documentos_model.index(0, 0)
                     self.tabla_documentos.selectRow(0)
                     self.on_table_selection_changed()  # fuerza la actualización de botones
-                    if self.table_model.rowCount() == 0:
-                        self.toggle_papelera_view()
 
 
-                # ✅ Si la papelera quedó vacía
                 # ✅ Si la papelera quedó vacía
                 if self.mostrando_papelera and self.documentos_model.rowCount() == 0:
-                    logger.info("Papelera vacía tras restaurar. Volviendo a documentos activos...")
+                    self.logger.info("Papelera vacía tras restaurar. Volviendo a documentos activos...")
                     self.toggle_papelera_view()
-
+                    self._cambiando_vista_auto = True
+                    self.toggle_papelera_view()
+                    self._cambiando_vista_auto = False
 
             else:
                 self.mostrar_error("Error", "No se pudieron restaurar todos los documentos seleccionados.")
@@ -2016,6 +2010,7 @@ class DocumentosModule(QWidget):
         except Exception as e:
             self.mostrar_error("Error en vista", f"Ocurrió un error al eliminar: {e}")
             logger.error(f"Error al eliminar definitivamente: {e}", exc_info=True)
+
         
     def on_restaurar_clicked(self):
         """
@@ -2038,4 +2033,3 @@ class DocumentosModule(QWidget):
 
         except Exception as e:
             print(f"Error al restaurar documento: {e}")
-
