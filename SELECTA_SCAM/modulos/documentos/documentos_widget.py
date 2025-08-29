@@ -1594,9 +1594,6 @@ class DocumentosModule(QWidget):
                     self.tabla_documentos.selectRow(0)
                     self.on_table_selection_changed()  # fuerza la actualización de botones
 
-
-                # ✅ Si la papelera quedó vacía
-                # ✅ Si la papelera quedó vacía
                 if self.mostrando_papelera and self.documentos_model.rowCount() == 0:
                     logger.info("Papelera vacía tras restaurar. Volviendo a documentos activos...")
                     self.toggle_papelera_view()
