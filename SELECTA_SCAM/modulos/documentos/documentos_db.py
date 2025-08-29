@@ -76,47 +76,51 @@ class DocumentosDB:
         - documento_id: int | None
         - documento_nombre: str | None
         """
+        from ...config import settings  # o la ruta donde tengas DOCUMENTOS_GUARDADOS_PATH
+        import os
+
+        base_path = os.path.join(os.getcwd(), "Documentos_Guardados")
+
         with self.get_session() as session:
             query = session.query(
                 Documento.cliente_id,        # 0: ID Cliente
                 Documento.id,                # 1: ID Documento
                 Cliente.nombre.label("cliente_nombre"),   # 2: Cliente
                 Documento.nombre,            # 3: Nombre Documento
-                Documento.ubicacion_archivo, # 4: (tú lo usas para "Tipo Archivo" por extensión)
+                Documento.ubicacion_archivo, # 4: Ubicación (ej: archivo.pdf)
                 Documento.tipo_documento,    # 5: Tipo Documento
                 Documento.fecha_subida,      # 6: Fecha Carga
-                Documento.ubicacion_archivo.label("ruta_completa"), # 7: Ruta
-                Documento.eliminado          # 8: Eliminado
-            ).join(Cliente, Documento.cliente_id == Cliente.id)
+                Documento.eliminado          # 7: Eliminado
+            ).join(Cliente, Cliente.id == Documento.cliente_id)
 
-            # Papelera / activos
-            eliminado = filters.get("eliminado", False)
-            query = query.filter(Documento.eliminado == eliminado)
+            # aplicar filtros...
+            if "eliminado" in filters:
+                query = query.filter(Documento.eliminado == filters["eliminado"])
+            if "cliente_ids" in filters and filters["cliente_ids"]:
+                query = query.filter(Documento.cliente_id.in_(filters["cliente_ids"]))
+            if "tipo_documento" in filters and filters["tipo_documento"]:
+                query = query.filter(Documento.tipo_documento == filters["tipo_documento"])
+            if "documento_id" in filters and filters["documento_id"]:
+                query = query.filter(Documento.id == filters["documento_id"])
+            if "documento_nombre" in filters and filters["documento_nombre"]:
+                query = query.filter(Documento.nombre.ilike(f"%{filters['documento_nombre']}%"))
 
-            # Cliente(s)
-            cliente_ids = filters.get("cliente_ids")
-            if cliente_ids:
-                query = query.filter(Documento.cliente_id.in_(cliente_ids))
+            resultados = []
+            for row in query.all():
+                ruta_completa = os.path.join(base_path, row.ubicacion_archivo or "")
+                resultados.append((
+                    row.cliente_id,
+                    row.id,
+                    row.cliente_nombre,
+                    row.nombre,
+                    row.ubicacion_archivo,
+                    row.tipo_documento,
+                    row.fecha_subida,
+                    ruta_completa,     # 7: ruta completa en memoria
+                    row.eliminado      # 8: eliminado
+                ))
+            return resultados
 
-            # Tipo de documento
-            tipo_documento = filters.get("tipo_documento")
-            if tipo_documento:
-                query = query.filter(Documento.tipo_documento == tipo_documento)
-
-            # Documento: por ID exacto
-            documento_id = filters.get("documento_id")
-            if documento_id is not None:
-                query = query.filter(Documento.id == int(documento_id))
-
-            # Documento: por nombre (LIKE, case-insensitive)
-            documento_nombre = filters.get("documento_nombre")
-            if documento_nombre:
-                query = query.filter(Documento.nombre.ilike(f"%{documento_nombre}%"))
-
-            return query.order_by(Documento.fecha_subida.desc()).all()
-
-    
-    # En: SELECTA_SCAM/modulos/documentos/documentos_db.py
 
     def get_documento_details_as_dict(self, doc_id: int) -> dict | None:
         """
