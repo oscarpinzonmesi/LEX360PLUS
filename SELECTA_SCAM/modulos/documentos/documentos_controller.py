@@ -226,4 +226,10 @@ class DocumentosController(QObject):
             return self.documentos_logic.get_documento_por_id(doc_id)
         except Exception as e:
             self.logger.error(f"Error al obtener documento por ID ({doc_id}): {e}")
+<<<<<<< HEAD
             return None
+=======
+            return None
+    
+    
+>>>>>>> develop
