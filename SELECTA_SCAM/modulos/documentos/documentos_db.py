@@ -37,8 +37,7 @@ class DocumentosDB:
                     archivo: str = None, ruta_completa: str = None) -> Documento | None:
         """
         Agrega un nuevo documento a la base de datos.
-        - `archivo` se recibe por compatibilidad, pero no se guarda.
-        - `ruta_completa` sí se guarda en la columna correspondiente.
+        - `ruta_completa` se recibe pero no se guarda en la BD (solo se usa en memoria).
         """
         from ...db.models import Documento  # asegurar import correcto
 
@@ -53,8 +52,7 @@ class DocumentosDB:
                     ubicacion_archivo=ubicacion_archivo,
                     tipo_documento=tipo_documento,
                     fecha_subida=fecha_subida,
-                    eliminado=False,
-                    ruta_completa=ruta_completa
+                    eliminado=False
                 )
                 session.add(nuevo_doc)
                 session.flush()  # asegura que el ID se genere
