@@ -1609,71 +1609,72 @@ class DocumentosModule(QWidget):
             self.mostrar_error("Error en vista", f"Ocurrió un error al restaurar: {e}")
             self.logger.error(f"Error en vista - Ocurrió un error al restaurar: {e}", exc_info=True)
 
-    def eliminar_documento_definitivamente_seleccionado(self):
-        # Ocultar tooltip al interactuar
-        if hasattr(self, 'custom_tooltip_label') and self.custom_tooltip_label is not None:
-            self.custom_tooltip_label.hide()
-        if hasattr(self, 'hide_tooltip_timer') and self.hide_tooltip_timer.isActive():
-            self.hide_tooltip_timer.stop()
-        self._last_hovered_index = QModelIndex()
+   def eliminar_documento_definitivamente_seleccionado(self):
+    # Ocultar tooltip al interactuar
+    if hasattr(self, 'custom_tooltip_label') and self.custom_tooltip_label is not None:
+        self.custom_tooltip_label.hide()
+    if hasattr(self, 'hide_tooltip_timer') and self.hide_tooltip_timer.isActive():
+        self.hide_tooltip_timer.stop()
+    self._last_hovered_index = QModelIndex()
 
-        selected_indexes = self.tabla_documentos.selectionModel().selectedRows()
-        if not selected_indexes:
-            # 👇 Ajuste: no mostrar mensaje si no hay selección
+    selected_indexes = self.tabla_documentos.selectionModel().selectedRows()
+    if not selected_indexes:
+        return
+    
+    documentos_a_eliminar_info = []
+    nombres_documentos = []
+    for index in selected_indexes:
+        row = index.row()
+        doc_id = self.documentos_model.get_documento_id(row)
+        if isinstance(doc_id, int):
+            doc_nombre = self.documentos_model.data(index.sibling(row, 2), Qt.DisplayRole)
+            if doc_id is not None:
+                documentos_a_eliminar_info.append({'id': doc_id, 'nombre': doc_nombre})
+                nombres_documentos.append(doc_nombre)
+        else:
+            logger.error(f"ID inválido en fila {row}: {doc_id}")
             return
-        
-        documentos_a_eliminar_info = []
-        nombres_documentos = []
-        for index in selected_indexes:
-            row = index.row()
-            doc_id = self.documentos_model.get_documento_id(row)
-            if isinstance(doc_id, int):
-                doc_nombre = self.documentos_model.data(index.sibling(row, 2), Qt.DisplayRole)
-                if doc_id is not None:
-                    documentos_a_eliminar_info.append({'id': doc_id, 'nombre': doc_nombre})
-                    nombres_documentos.append(doc_nombre)
-            else:
-                logger.error(f"ID inválido en fila {row}: {doc_id}")
-                return
-        
-        if not documentos_a_eliminar_info:
-            return
+    
+    if not documentos_a_eliminar_info:
+        return
 
-        nombres_str = ", ".join(nombres_documentos[:3])
-        if len(nombres_documentos) > 3:
-            nombres_str += ", ..."
+    nombres_str = ", ".join(nombres_documentos[:3])
+    if len(nombres_documentos) > 3:
+        nombres_str += ", ..."
 
-        resp = QMessageBox.question(
-            self,
-            "Confirmar Eliminación Definitiva",
-            f"¡ADVERTENCIA! Esta acción eliminará el/los documento(s) PERMANENTEMENTE.\n({nombres_str})\n¿Está seguro?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
-        )
-        
-        if resp == QMessageBox.Yes:
-            all_success = True
-            for doc_info in documentos_a_eliminar_info:
-                try:
-                    success, _ = self.controller.eliminar_documento_definitivamente(doc_info['id'])
-                    if not success:
-                        all_success = False
-                except Exception as e:
+    resp = QMessageBox.question(
+        self,
+        "Confirmar Eliminación Definitiva",
+        f"¡ADVERTENCIA! Esta acción eliminará el/los documento(s) PERMANENTEMENTE.\n({nombres_str})\n¿Está seguro?",
+        QMessageBox.Yes | QMessageBox.No,
+        QMessageBox.No
+    )
+    
+    if resp == QMessageBox.Yes:
+        all_success = True
+        for doc_info in documentos_a_eliminar_info:
+            try:
+                success, _ = self.controller.eliminar_documento_definitivamente(doc_info['id'])
+                if not success:
                     all_success = False
-                    logger.error(f"Error al eliminar documento ID {doc_info['id']}: {e}", exc_info=True)
+            except Exception as e:
+                all_success = False
+                logger.error(f"Error al eliminar documento ID {doc_info['id']}: {e}", exc_info=True)
 
-            if all_success:
-                QMessageBox.information(self, "Éxito", "Documento(s) eliminado(s) permanentemente.")
-            
-            # 🔥 Ajuste clave:
-            self.tabla_documentos.clearSelection()
-            self.ejecutar_busqueda()
+        if all_success:
+            QMessageBox.information(self, "Éxito", "Documento(s) eliminado(s) permanentemente.")
 
-            # 👇 Si después de eliminar ya no quedan documentos → ir a Documentos Activos
-            if self.documentos_model.rowCount() == 0:
-                self.mostrar_documentos_activos()
+        # 🔥 Refrescar tabla
+        self.tabla_documentos.clearSelection()
+        self.ejecutar_busqueda()
 
+        # 👇 Forzar actualización de la vista antes de chequear filas
+        from PyQt5.QtWidgets import QApplication
+        QApplication.processEvents()
 
+        # 👇 Si ya no quedan documentos → ir automáticamente a Documentos Activos
+        if self.documentos_model.rowCount() == 0:
+            self.mostrar_documentos_activos()
     def ejecutar_busqueda(self):
         """
         Ejecuta la búsqueda de documentos basándose en los filtros actuales de la UI
