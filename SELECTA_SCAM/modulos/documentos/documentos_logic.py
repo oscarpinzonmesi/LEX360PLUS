@@ -29,9 +29,20 @@ class DocumentosLogic:
 
         return self.db.get_documentos_filtered_as_tuples(**db_filters)
 
-    def agregar_documento(self, **data) -> int | None:
-        """Agrega un nuevo documento."""
+    def agregar_documento(self, **data):
+        """
+        Normaliza los datos recibidos de la vista y los guarda en la base de datos.
+        """
+        archivo = data.pop("archivo", None)  # puede venir desde la vista
+        if archivo:
+            import os
+            data["ubicacion_archivo"] = os.path.basename(archivo)     # nombre con extensión
+            data["ruta_completa"] = archivo                           # ruta completa real
+            if "nombre" not in data or not data["nombre"]:
+                data["nombre"] = os.path.splitext(os.path.basename(archivo))[0]  # nombre sin extensión
+
         return self.db.add_documento(**data)
+
 
     def editar_documento(self, doc_id: int, **data) -> bool:
         """Actualiza los detalles de un documento."""
