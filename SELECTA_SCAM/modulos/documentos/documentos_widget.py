@@ -1462,6 +1462,8 @@ class DocumentosModule(QWidget):
             else:
                 QMessageBox.critical(self, "Error", "Hubo un error al enviar uno o más documentos a la papelera.")
 
+    
+    
     def toggle_papelera_view(self):
         # Ocultar tooltip al interactuar
         if hasattr(self, 'custom_tooltip_label') and self.custom_tooltip_label is not None:
@@ -1608,7 +1610,7 @@ class DocumentosModule(QWidget):
             self.logger.error(f"Error en vista - Ocurrió un error al restaurar: {e}", exc_info=True)
 
     def eliminar_documento_definitivamente_seleccionado(self):
-        # Ocultar tooltip al interactuar (estas líneas son buenas y las mantenemos)
+        # Ocultar tooltip al interactuar
         if hasattr(self, 'custom_tooltip_label') and self.custom_tooltip_label is not None:
             self.custom_tooltip_label.hide()
         if hasattr(self, 'hide_tooltip_timer') and self.hide_tooltip_timer.isActive():
@@ -1617,75 +1619,59 @@ class DocumentosModule(QWidget):
 
         selected_indexes = self.tabla_documentos.selectionModel().selectedRows()
         if not selected_indexes:
-            self.mostrar_advertencia("Eliminar Definitivamente", "Por favor, seleccione uno o más documentos para eliminar definitivamente.")
+            # 👇 Ajuste: no mostrar mensaje si no hay selección
             return
         
-        # Recolectar información de los documentos seleccionados
         documentos_a_eliminar_info = []
         nombres_documentos = []
         for index in selected_indexes:
             row = index.row()
-            doc_id = self.documentos_model.get_documento_id(row) # Usar self.documentos_model
-            # Asegúrate de que doc_id sea un entero antes de agregarlo
+            doc_id = self.documentos_model.get_documento_id(row)
             if isinstance(doc_id, int):
-                doc_nombre = self.documentos_model.data(index.sibling(row, 2), Qt.DisplayRole) # Asumiendo columna 2 es el nombre
-                # doc_ruta_relativa no es necesaria para la llamada al controlador aquí, pero la mantendremos si la usas para otra cosa
-                # doc_ruta_relativa = self.documentos_model.get_documento_path(row) # Usar self.documentos_model
-                
-                if doc_id is not None: # doble chequeo aunque ya validamos el tipo
-                    documentos_a_eliminar_info.append({'id': doc_id, 'nombre': doc_nombre}) # No necesitamos ruta_relativa en esta info
+                doc_nombre = self.documentos_model.data(index.sibling(row, 2), Qt.DisplayRole)
+                if doc_id is not None:
+                    documentos_a_eliminar_info.append({'id': doc_id, 'nombre': doc_nombre})
                     nombres_documentos.append(doc_nombre)
-                else:
-                    logger.warning(f"No se pudo obtener el ID del documento en la fila {row} para eliminar definitivamente.")
             else:
-                logger.error(f"El ID del documento en la fila {row} no es un entero válido: {doc_id}. No se puede eliminar.")
-                self.mostrar_error("Error de Datos", f"El ID del documento seleccionado en la fila {row} es inválido.")
-                return # Detener la operación si hay un ID no válido.
+                logger.error(f"ID inválido en fila {row}: {doc_id}")
+                return
         
         if not documentos_a_eliminar_info:
-            self.mostrar_advertencia("Error", "No se encontraron IDs de documentos válidos para eliminar.")
             return
 
-        nombres_str = ", ".join(nombres_documentos[:3]) # Mostrar los primeros 3, si hay más
+        nombres_str = ", ".join(nombres_documentos[:3])
         if len(nombres_documentos) > 3:
             nombres_str += ", ..."
 
-        resp = QMessageBox.question(self, "Confirmar Eliminación Definitiva",
-                                    f"¡ADVERTENCIA! Esta acción eliminará el/los documento(s) PERMANENTEMENTE de la base de datos y, si existe, del sistema de archivos.\n({nombres_str})\n¿Está seguro de que desea continuar?",
-                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        resp = QMessageBox.question(
+            self,
+            "Confirmar Eliminación Definitiva",
+            f"¡ADVERTENCIA! Esta acción eliminará el/los documento(s) PERMANENTEMENTE.\n({nombres_str})\n¿Está seguro?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
         
         if resp == QMessageBox.Yes:
             all_success = True
-            failed_docs_list = []
-
             for doc_info in documentos_a_eliminar_info:
-                doc_id = doc_info['id']
-                doc_nombre = doc_info['nombre']
                 try:
-                    success, message = self.controller.eliminar_documento_definitivamente(doc_id)
-                    if success:
-                        logger.info(f"Documento '{doc_nombre}' (ID: {doc_id}) eliminado permanentemente. Mensaje: {message}")
-                    else:
+                    success, _ = self.controller.eliminar_documento_definitivamente(doc_info['id'])
+                    if not success:
                         all_success = False
-                        failed_docs_list.append(f"'{doc_nombre}' (ID: {doc_id}) - Falló: {message}")
                 except Exception as e:
                     all_success = False
-                    failed_docs_list.append(f"'{doc_nombre}' (ID: {doc_id}) - Error inesperado: {e}")
-                    logger.error(f"Error inesperado al eliminar definitivamente documento ID {doc_id}: {e}", exc_info=True)
+                    logger.error(f"Error al eliminar documento ID {doc_info['id']}: {e}", exc_info=True)
 
             if all_success:
                 QMessageBox.information(self, "Éxito", "Documento(s) eliminado(s) permanentemente.")
-            else:
-                if len(failed_docs_list) == len(documentos_a_eliminar_info):
-                    self.mostrar_error("Error Grave", "No se pudo eliminar ninguno de los documentos seleccionados permanentemente.")
-                else:
-                    self.mostrar_advertencia("Eliminación Parcial", 
-                                            f"Se eliminaron algunos documentos, pero hubo problemas con:\n- " + "\n- ".join(failed_docs_list))
-
+            
             # 🔥 Ajuste clave:
-            # En lugar de volver a llamar búsqueda y provocar que el mensaje aparezca sin selección
-            self.tabla_documentos.clearSelection()   # Limpia la selección
-            self.ejecutar_busqueda()                 # Refresca la tabla sin provocar advertencias
+            self.tabla_documentos.clearSelection()
+            self.ejecutar_busqueda()
+
+            # 👇 Si después de eliminar ya no quedan documentos → ir a Documentos Activos
+            if self.documentos_model.rowCount() == 0:
+                self.mostrar_documentos_activos()
 
 
     def ejecutar_busqueda(self):
