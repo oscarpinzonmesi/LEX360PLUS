@@ -1556,7 +1556,6 @@ class DocumentosModule(QWidget):
         self.actualizar_tabla_documentos(documentos_en_papelera)
         if not documentos_en_papelera:
             self.mostrar_mensaje("Papelera Vacía", "No hay documentos en la papelera.")
-            # Si la papelera está vacía, regresar a documentos activos
             if self.table_model.rowCount() == 0:
                 self.toggle_papelera_view()  # vuelve a vista principal
 
