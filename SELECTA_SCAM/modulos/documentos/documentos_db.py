@@ -33,9 +33,12 @@ class DocumentosDB:
     # SELECTA_SCAM/modulos/documentos/documentos_db.py
 
     def add_documento(self, cliente_id: int, nombre: str, ubicacion_archivo: str,
-                      tipo_documento: str = None, fecha_subida: datetime = None) -> Documento | None:
+                    tipo_documento: str = None, fecha_subida: datetime = None,
+                    archivo: str = None, ruta_completa: str = None) -> Documento | None:
         """
         Agrega un nuevo documento a la base de datos.
+        - `archivo` se recibe por compatibilidad, pero no se guarda.
+        - `ruta_completa` sí se guarda en la columna correspondiente.
         """
         from ...db.models import Documento  # asegurar import correcto
 
@@ -50,7 +53,8 @@ class DocumentosDB:
                     ubicacion_archivo=ubicacion_archivo,
                     tipo_documento=tipo_documento,
                     fecha_subida=fecha_subida,
-                    eliminado=False
+                    eliminado=False,
+                    ruta_completa=ruta_completa
                 )
                 session.add(nuevo_doc)
                 session.flush()  # asegura que el ID se genere
@@ -59,6 +63,7 @@ class DocumentosDB:
         except Exception as e:
             self.logger.error(f"Error al agregar documento: {e}", exc_info=True)
             return None
+
 
 
     def get_documentos_filtered_as_tuples(self, **filters) -> list:
