@@ -1984,3 +1984,4 @@ class DocumentosModule(QWidget):
         except Exception as e:
             self.mostrar_error("Error en vista", f"Ocurrió un error al eliminar: {e}")
             logger.error(f"Error al eliminar definitivamente: {e}", exc_info=True)
+# prueba de commit automático
