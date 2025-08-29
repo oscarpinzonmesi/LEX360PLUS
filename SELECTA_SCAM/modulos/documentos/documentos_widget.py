@@ -1292,6 +1292,13 @@ class DocumentosModule(QWidget):
             
             self.tabla_documentos.clearSelection()
 
+            # ⬇️ Auto-retorno cuando la papelera queda vacía
+            if self.mostrando_papelera and len(documentos_a_mostrar) == 0:
+                logger.info("Papelera vacía → retornando automáticamente a Documentos Activos desde update_document_table.")
+                self.toggle_papelera_view()  # vuelve al tablero principal y recarga
+                return
+
+
         except Exception as e:
             self.logger.error(f"Error al actualizar la tabla de documentos: {e}")
             self.mostrar_error("Error de Actualización de Tabla",
