@@ -229,4 +229,3 @@ class DocumentosController(QObject):
             return None
     
     
-seguro qu hicite el camnsi
