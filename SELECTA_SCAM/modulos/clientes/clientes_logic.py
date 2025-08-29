@@ -85,5 +85,5 @@ class ClientesLogic:
             self.logger.error(f"Error inesperado al buscar clientes: {e}")
             return []
 
-El mejor de los cambios 
+
 
