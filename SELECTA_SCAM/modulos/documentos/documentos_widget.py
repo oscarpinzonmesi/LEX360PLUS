@@ -1505,7 +1505,8 @@ class DocumentosModule(QWidget):
             # Muestra los botones de acción normales y campos de entrada de carga
             self.btn_eliminar_seleccion.setVisible(True)
             self.btn_editar_seleccion.setVisible(True)
-            self.btn_ver_documento.setVisible(True)
+            self.btn_ver_documento.setVisible(False)
+
 
             self.main_load_docs_label.setVisible(True)
             self.cliente_combo.setVisible(True)
