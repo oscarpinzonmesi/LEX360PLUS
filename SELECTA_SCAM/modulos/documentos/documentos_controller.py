@@ -227,7 +227,3 @@ class DocumentosController(QObject):
         except Exception as e:
             self.logger.error(f"Error al obtener documento por ID ({doc_id}): {e}")
             return None
-# Prueba de commit en LEX360PLUS
-
-
-            ok aré un pequiño cambio 

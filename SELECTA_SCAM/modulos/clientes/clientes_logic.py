@@ -61,9 +61,6 @@ class ClientesLogic:
             self.logger.error("Error al eliminar clientes permanentemente: %s", e)
             return False
 
-    # >>> ¡CORRECCIÓN EN EL MÉTODO search_clientes! <<<
-    # SELECTA_SCAM/modulos/clientes/clientes_logic.py
-# ... (código existente) ...
     def search_clientes(self, search_text: str) -> list:
         """
         Busca clientes por nombre o ID.
@@ -87,3 +84,6 @@ class ClientesLogic:
         except Exception as e:
             self.logger.error(f"Error inesperado al buscar clientes: {e}")
             return []
+
+El mejor de los cambios 
+
