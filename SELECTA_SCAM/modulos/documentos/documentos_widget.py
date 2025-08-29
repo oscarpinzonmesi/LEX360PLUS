@@ -1668,6 +1668,12 @@ class DocumentosModule(QWidget):
             self.tabla_documentos.clearSelection()
             self.ejecutar_busqueda()
 
+            # 🔥 Ajuste: si estamos en papelera y quedó vacía, volver automáticamente a documentos activos
+            if self.mostrando_papelera and self.documentos_model.rowCount() == 0:
+                logger.info("Último documento eliminado de papelera → retornando al tablero principal (activos).")
+                self.mostrar_documentos_activos()
+
+
             # 👇 Forzar actualización de la vista antes de chequear filas
             from PyQt5.QtWidgets import QApplication
             QApplication.processEvents()
@@ -1675,6 +1681,8 @@ class DocumentosModule(QWidget):
             # 👇 Si ya no quedan documentos → ir automáticamente a Documentos Activos
             if self.documentos_model.rowCount() == 0:
                 self.mostrar_documentos_activos()
+
+
 
     def ejecutar_busqueda(self):
         """
