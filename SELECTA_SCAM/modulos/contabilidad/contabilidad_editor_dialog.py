@@ -50,6 +50,7 @@ class ContabilidadEditorDialog(QDialog):
         form_layout = QFormLayout()
         form_layout.setContentsMargins(20, 20, 20, 20)
         form_layout.setSpacing(15)
+        form_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
 
         self.cliente_section_layout = QVBoxLayout()
         self.cliente_input = QComboBox()
@@ -66,6 +67,11 @@ class ContabilidadEditorDialog(QDialog):
         self.cliente_search_input.setPlaceholderText("Buscar cliente por nombre o ID...")
         self.cliente_search_input.setFont(self.input_font)
         self.cliente_search_input.hide()
+
+        self.cliente_search_input.setMinimumWidth(600)
+        self.cliente_search_input.setSizePolicy(self.cliente_search_input.sizePolicy().Expanding,
+                                                self.cliente_search_input.sizePolicy().Fixed)
+
 
         self.cliente_search_results_list = QListWidget()
         self.cliente_search_results_list.setObjectName("dialogoInput")
