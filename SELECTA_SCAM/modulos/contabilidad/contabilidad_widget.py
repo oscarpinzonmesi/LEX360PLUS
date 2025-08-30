@@ -344,129 +344,84 @@ class ContabilidadWidget(QWidget):
         main_layout.addLayout(button_layout)
 
         self.update_action_button_states()
-
     def handle_controller_error(self, message: str):
-        """Muestra un mensaje de error crítico al usuario."""
-        logger.error(f"Error de controlador: {message}")
         QMessageBox.critical(self, "Error de Operación", message)
 
     def update_cliente_combo(self, clientes_data: list):
-        """
-        Actualiza el QComboBox de clientes con los datos proporcionados.
-        Añade una opción para 'Buscar Cliente...' y gestiona la visibilidad
-        del campo de búsqueda.
-        """
         self.cliente_filter_combo.clear()
         self.cliente_filter_combo.addItem("Seleccione o busque cliente...", None)
         self.cliente_filter_combo.addItem("🔍 Buscar Cliente...", "SEARCH_MODE")
         for cliente in clientes_data:
             self.cliente_filter_combo.addItem(cliente[1], cliente[0])
         self.selected_cliente_id = None
-        self.cliente_filter_combo.setCurrentIndex(0) 
+        self.cliente_filter_combo.setCurrentIndex(0)
         self.toggle_cliente_search_mode(False)
 
     def on_cliente_filter_changed(self, index):
-        """
-        Maneja el cambio en el QComboBox del filtro de clientes,
-        disparando una actualización completa de la vista.
-        """
         cliente_id = self.cliente_filter_combo.currentData()
-        
         if cliente_id == "SEARCH_MODE":
-            self.toggle_cliente_search_mode(True) # ¡CORRECCIÓN: Habilita el modo de búsqueda!
+            self.toggle_cliente_search_mode(True)
             self.proceso_input.setEnabled(False)
-            self.update_contabilidad_display()
         else:
-            self.toggle_cliente_search_mode(False) # ¡CORRECCIÓN: Deshabilita el modo de búsqueda!
-            if cliente_id is None: # Cuando se selecciona "Seleccione o busque cliente..."
+            self.toggle_cliente_search_mode(False)
+            if cliente_id is None:
                 self.proceso_input.setEnabled(False)
-            else: # Cuando se selecciona un cliente específico
+            else:
                 self.proceso_input.setEnabled(True)
                 self.controller.get_procesos_for_client_sync(cliente_id)
-            
-            self.update_contabilidad_display()
-    
-    # Pegar estos dos métodos dentro de la clase ContabilidadWidget
+        self.update_contabilidad_display()
 
     def show_custom_tooltip(self, index: QModelIndex):
         if not index.isValid():
-            if self.custom_tooltip_label.isVisible():
-                self.custom_tooltip_label.hide()
-                if self.hide_tooltip_timer.isActive():
-                    self.hide_tooltip_timer.stop()
+            self.custom_tooltip_label.hide()
+            if self.hide_tooltip_timer.isActive():
+                self.hide_tooltip_timer.stop()
             self._last_hovered_index = QModelIndex()
             return
-
         if self._last_hovered_index == index and self.custom_tooltip_label.isVisible():
             return
-
         self._last_hovered_index = index
-        
-        # Aquí usamos el modelo de la tabla de contabilidad
         value = self.contabilidad_table_model.data(index, Qt.DisplayRole)
         tooltip_text = str(value)
-        
         if not tooltip_text:
             self.custom_tooltip_label.hide()
             if self.hide_tooltip_timer.isActive():
                 self.hide_tooltip_timer.stop()
             return
-
         self.custom_tooltip_label.setText(tooltip_text)
         self.custom_tooltip_label.adjustSize()
-
         rect = self.table_view.visualRect(index)
         global_pos = self.table_view.mapToGlobal(rect.center())
-        
-        tooltip_x = global_pos.x() + 10
-        tooltip_y = global_pos.y() - self.custom_tooltip_label.height() - 5
-
-        self.custom_tooltip_label.move(tooltip_x, tooltip_y)
+        self.custom_tooltip_label.move(global_pos.x() + 10, global_pos.y() - self.custom_tooltip_label.height() - 5)
         self.custom_tooltip_label.show()
-        
         self.hide_tooltip_timer.stop()
-        self.hide_tooltip_timer.start(5000) # El tooltip dura 5 segundos
+        self.hide_tooltip_timer.start(5000)
 
     def eventFilter(self, source, event):
         if source == self.table_view.viewport():
             if event.type() == event.MouseMove:
-                pos = event.pos()
-                index = self.table_view.indexAt(pos)
+                index = self.table_view.indexAt(event.pos())
                 if not index.isValid():
-                    if self.custom_tooltip_label.isVisible():
-                        self.custom_tooltip_label.hide()
-                        if self.hide_tooltip_timer.isActive():
-                            self.hide_tooltip_timer.stop()
+                    self.custom_tooltip_label.hide()
+                    if self.hide_tooltip_timer.isActive():
+                        self.hide_tooltip_timer.stop()
                     self._last_hovered_index = QModelIndex()
                 elif index != self._last_hovered_index:
                     self.show_custom_tooltip(index)
-            
             elif event.type() == event.Leave:
                 self.custom_tooltip_label.hide()
                 if self.hide_tooltip_timer.isActive():
                     self.hide_tooltip_timer.stop()
                 self._last_hovered_index = QModelIndex()
         return super().eventFilter(source, event)
-    
-    # En: contabilidad_widget.py (añade este método nuevo)
-
-    # En: contabilidad_widget.py
 
     def on_operation_successful(self, message: str):
-        """
-        Slot que se activa cuando el controlador emite una señal de éxito.
-        """
-        self.logger.info(message)
         self.update_contabilidad_display()
-
-        # --- PRUEBA DE DIAGNÓSTICO (DESPUÉS) ---
-        # Usamos un QTimer para darle un instante al modelo para que se actualice
         QTimer.singleShot(100, lambda: self.contabilidad_table_model.print_internal_data("DESPUÉS de refrescar"))
-        print("--- FIN DE PRUEBA DE EDICIÓN ---\n")
 
     def connect_signals(self):
         self.proceso_input.currentIndexChanged.connect(self.on_proceso_filter_changed)
-        self.tipo_input.currentIndexChanged.connect(self.on_tipo_filter_changed) # Conectar el nuevo filtro
+        self.tipo_input.currentIndexChanged.connect(self.on_tipo_filter_changed)
         self.table_view.selectionModel().selectionChanged.connect(self.update_action_button_states)
         self.btn_editar.clicked.connect(self.editar_contabilidad)
         self.btn_eliminar.clicked.connect(self.eliminar_contabilidad)
@@ -474,192 +429,124 @@ class ContabilidadWidget(QWidget):
         self.btn_pdf.clicked.connect(self.on_generar_reporte_clicked)
         self.btn_agregar.clicked.connect(self.agregar_contabilidad)
         self.cliente_filter_combo.currentIndexChanged.connect(self.on_cliente_filter_changed)
-        self.cliente_search_input.textChanged.connect(self.search_timer.start) 
-        self.search_timer.setInterval(300) # Establece el retardo en milisegundos (ej. 300ms)
-
-        # En: contabilidad_widget.py
-# Añade este método nuevo a la clase ContabilidadWidget
+        self.cliente_search_input.textChanged.connect(self.search_timer.start)
+        self.search_timer.setInterval(300)
 
     def limpiar_filtros(self):
-        """
-        Resetea todos los controles de filtro a su estado inicial, sale del
-        modo de búsqueda y recarga la tabla para mostrar todos los registros.
-        """
-        self.logger.info("Widget: Limpiando todos los filtros.")
-        
-        # Bloqueamos las señales para evitar que la tabla se recargue varias veces
         self.cliente_filter_combo.blockSignals(True)
         self.proceso_input.blockSignals(True)
         self.tipo_input.blockSignals(True)
         self.search_input.blockSignals(True)
         self.cliente_search_input.blockSignals(True)
-
-        # Salimos del modo de búsqueda de cliente si está activo
         if self.is_search_mode_active:
             self.toggle_cliente_search_mode(False)
-
-        # Reseteamos los desplegables a su primera opción
         self.cliente_filter_combo.setCurrentIndex(0)
         self.proceso_input.clear()
         self.proceso_input.addItem("Todos los Procesos", None)
         self.proceso_input.setEnabled(False)
         self.tipo_input.setCurrentIndex(0)
-        
-        # Limpiamos los campos de búsqueda de texto
         self.search_input.clear()
         self.cliente_search_input.clear()
-        
-        # Reactivamos las señales
         self.cliente_filter_combo.blockSignals(False)
         self.proceso_input.blockSignals(False)
         self.tipo_input.blockSignals(False)
         self.search_input.blockSignals(False)
         self.cliente_search_input.blockSignals(False)
-        
-        # Finalmente, actualizamos la vista para que muestre todo
         self.update_contabilidad_display()
 
     def perform_search(self):
-        """
-        Este método es llamado por el QTimer cuando el usuario deja de escribir.
-        Dispara la actualización de la tabla y el resumen con el término de búsqueda actual.
-        """
         self.update_contabilidad_display()
 
-
     def agregar_contabilidad(self):
-        try:
-            from .contabilidad_editor_dialog import ContabilidadEditorDialog
-            
-            clientes_data = self.controller.get_all_clientes_sync()
-            procesos_data = self.controller.get_all_procesos_sync()
-            tipos_data = self.controller.get_tipos_contables_sync()
-
-            dialog = ContabilidadEditorDialog(
-                contabilidad_data=None, # Indicamos que es un registro nuevo
-                clientes_data=clientes_data,
-                procesos_data=procesos_data,
-                tipos_data=tipos_data,
-                clientes_logic=self.controller.clientes_logic,
-                parent=self
-            )
-            
-            if dialog.exec() == QDialog.Accepted:
-                data = dialog.get_values()
-                
-                if data:
-                    current_cliente_filter = self.cliente_filter_combo.currentData()
-                    current_proceso_filter = self.proceso_input.currentData()
-                    
-                    # CORRECCIÓN: Usar data.get('tipo_id') en lugar de data.get('tipo')
-                    self.controller.add_record(
-                        cliente_id=data.get('cliente_id'),
-                        proceso_id=data.get('proceso_id'),
-                        tipo_id=data.get('tipo_id'), # <-- ¡CAMBIO CORRECTO A 'tipo_id'!
-                        descripcion=data.get('descripcion'),
-                        valor=data.get('valor'),
-                        fecha=data.get('fecha'),
-                        current_filter_cliente_id=current_cliente_filter,
-                        current_filter_proceso_id=current_proceso_filter
-                    )
-                    print("DEBUG: Llamada a add_record finalizada. Verificando si se emitió la señal.")
-
-        except Exception as e:
-                self.logger.error(f"Error al abrir el diálogo de agregar contabilidad: {e}")
-                QMessageBox.critical(self, "Error", f"No se pudo abrir el diálogo para agregar un registro.")
-        
-        # En contabilidad_widget.py (añade este método nuevo)
+        from .contabilidad_editor_dialog import ContabilidadEditorDialog
+        clientes_data = self.controller.get_all_clientes_sync()
+        procesos_data = self.controller.get_all_procesos_sync()
+        tipos_data = self.controller.get_tipos_contables_sync()
+        dialog = ContabilidadEditorDialog(
+            contabilidad_data=None,
+            clientes_data=clientes_data,
+            procesos_data=procesos_data,
+            tipos_data=tipos_data,
+            clientes_logic=self.controller.clientes_logic,
+            parent=self
+        )
+        if dialog.exec() == QDialog.Accepted:
+            data = dialog.get_values()
+            if data:
+                current_cliente_filter = self.cliente_filter_combo.currentData()
+                current_proceso_filter = self.proceso_input.currentData()
+                self.controller.add_record(
+                    cliente_id=data.get('cliente_id'),
+                    proceso_id=data.get('proceso_id'),
+                    tipo_id=data.get('tipo_id'),
+                    descripcion=data.get('descripcion'),
+                    valor=data.get('valor'),
+                    fecha=data.get('fecha'),
+                    current_filter_cliente_id=current_cliente_filter,
+                    current_filter_proceso_id=current_proceso_filter
+                )
 
     def reselect_row_by_id(self, record_id: int):
-        """
-        Busca una fila en el modelo de la tabla por su ID y la selecciona.
-        """
-        # Itera sobre todas las filas del modelo de la tabla
         for row in range(self.contabilidad_table_model.rowCount()):
-            # Obtiene el ID de la fila actual
-            id_in_row = self.contabilidad_table_model.get_record_id(row)
-            if id_in_row == record_id:
-                # Si encontramos el ID, limpiamos la selección anterior
+            if self.contabilidad_table_model.get_record_id(row) == record_id:
                 self.table_view.clearSelection()
-                # Seleccionamos la fila completa
                 self.table_view.selectRow(row)
-                # Nos aseguramos de que la fila sea visible (por si hay scroll)
                 self.table_view.scrollTo(self.contabilidad_table_model.index(row, 0))
-                break # Dejamos de buscar
-    
+                break
+
     def toggle_cliente_search_mode(self, enable: bool):
-        """
-        Muestra u oculta los campos de búsqueda de cliente y la lista de resultados.
-        Actualiza el estado interno self.is_search_mode_active.
-        """
         self.is_search_mode_active = enable
         self.cliente_search_label.setVisible(enable)
         self.cliente_search_input.setVisible(enable)
         if not enable:
             self.cliente_search_input.clear()
         self.cliente_filter_combo.setVisible(not enable)
-    
+
     def on_tipo_filter_changed(self):
-        """
-        Maneja el cambio en el QComboBox del filtro de tipo, disparando
-        una actualización completa de la vista.
-        """
         self.update_contabilidad_display()
 
-    # C:\Users\oscar\Desktop\LEX360PLUS\SELECTA_SCAM\modulos\contabilidad\contabilidad_widget.py
-
     def add_record_button_clicked(self):
-        # Obtener el cliente y proceso del diálogo
         new_cliente_id = self.dialog.cliente_combo.currentData()
         new_proceso_id = self.dialog.proceso_combo.currentData()
-
-        # --- CAMBIO CRUCIAL AQUÍ: Obtener el ID del tipo, no el texto ---
-        new_tipo_id = self.dialog.tipo_combo.currentData() 
-
+        new_tipo_id = self.dialog.tipo_combo.currentData()
         new_descripcion = self.dialog.descripcion_input.text()
         new_valor = float(self.dialog.valor_input.text())
         new_fecha = self.dialog.fecha_edit.date().toPyDate()
         current_filter_cliente_id, current_filter_proceso_id = self._get_current_filter_ids()
-        
-        success = self.controller.add_record(
-            # --- PASANDO EL ARGUMENTO CORRECTO AL CONTROLADOR ---
+        self.controller.add_record(
             new_cliente_id, new_proceso_id, new_tipo_id, new_descripcion, new_valor, new_fecha,
             current_filter_cliente_id=current_filter_cliente_id,
             current_filter_proceso_id=current_filter_proceso_id
         )
 
     def update_record_button_clicked(self):
-        # ...
         record_id = self.table_model.data(self.table_model.index(selected_row, 0), Qt.UserRole)
         updated_cliente_id = self.dialog.cliente_combo.currentData()
         updated_proceso_id = self.dialog.proceso_combo.currentData()
-        # CORRECCIÓN: Obtener el ID del tipo, no el texto
-        updated_tipo_id = self.dialog.tipo_combo.currentData() 
+        updated_tipo_id = self.dialog.tipo_combo.currentData()
         updated_descripcion = self.dialog.descripcion_input.text()
         updated_valor = float(self.dialog.valor_input.text())
         updated_fecha = self.dialog.fecha_edit.date().toPyDate()
         current_filter_cliente_id, current_filter_proceso_id = self._get_current_filter_ids()
-        
-        success = self.controller.update_record(
-            record_id, updated_cliente_id, updated_proceso_id, updated_tipo_id, updated_descripcion, updated_valor, updated_fecha,
+        self.controller.update_record(
+            record_id, updated_cliente_id, updated_proceso_id, updated_tipo_id,
+            updated_descripcion, updated_valor, updated_fecha,
             current_filter_cliente_id=current_filter_cliente_id,
             current_filter_proceso_id=current_filter_proceso_id
         )
-
 
     def delete_record_button_clicked(self):
         selected_row = self.table_view.currentIndex().row()
         if selected_row < 0:
             QMessageBox.warning(self, "Advertencia", "Seleccione un registro para eliminar.")
             return
-        record_id = self.table_model.data(self.table_model.index(selected_row, 0), Qt.UserRole) # Asume ID está en UserRole
-        reply = QMessageBox.question(self, 'Confirmar Eliminación',
-                                     f"¿Está seguro de que desea eliminar el registro ID {record_id}?",
-                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        record_id = self.table_model.data(self.table_model.index(selected_row, 0), Qt.UserRole)
+        reply = QMessageBox.question(self, "Confirmar Eliminación",
+                                    f"¿Está seguro de que desea eliminar el registro ID {record_id}?",
+                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.Yes:
-            # Obtener los filtros actuales de la UI ANTES de llamar al controlador
             current_filter_cliente_id, current_filter_proceso_id = self._get_current_filter_ids()
-            success = self.controller.delete_record(
+            self.controller.delete_record(
                 record_id,
                 current_filter_cliente_id=current_filter_cliente_id,
                 current_filter_proceso_id=current_filter_proceso_id
