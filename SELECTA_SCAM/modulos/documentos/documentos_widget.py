@@ -1472,23 +1472,15 @@ class DocumentosModule(QWidget):
     
     
     def toggle_papelera_view(self):
-        """
-        Cambia entre vista de Activos y Papelera.
-        IMPORTANTE: el flag se cambia ANTES y la limpieza no debe sobreescribirlo.
-        """
-        # Cambiamos el modo primero
+        """Cambiar entre Activos y Papelera sin perder el modo durante la limpieza."""
         self.mostrando_papelera = not self.mostrando_papelera
         logger.info(f"Modo papelera (tras toggle): {self.mostrando_papelera}")
-
-        # Limpiar filtros SIN tocar el modo
         try:
             self.limpiar_filtros_busqueda(keep_mode=True)
         except TypeError:
-            # Si la versión anterior no acepta el parámetro, llamamos sin él (backward compatible)
             self.limpiar_filtros_busqueda()
-
-        # Refrescar con el modo ya establecido
         self.ejecutar_busqueda()
+
 
 
 
