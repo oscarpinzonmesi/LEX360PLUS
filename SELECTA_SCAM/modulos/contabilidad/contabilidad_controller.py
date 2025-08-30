@@ -93,7 +93,7 @@ class ContabilidadController(QObject):
             self.logger.exception("Error al cargar registros/resumen")
             self.operation_failed.emit(f"Error al cargar datos y resumen: {str(e)}")
 
-   def add_record(
+    def add_record(
         self,
         cliente_id,
         proceso_id,
@@ -104,31 +104,32 @@ class ContabilidadController(QObject):
         current_filter_cliente_id: int = None,
         current_filter_proceso_id: int = None,
     ):
-    """
-    Agrega un registro y refresca la tabla.
-    """
-    try:
-        self.contabilidad_logic.add_contabilidad_record(
-            cliente_id=cliente_id,
-            proceso_id=proceso_id,
-            tipo_contable_id=tipo_contable_id,
-            descripcion=descripcion,
-            monto=monto,
-            fecha=fecha,
-        )
+        """
+        Agrega un registro y refresca la tabla.
+        """
+        try:
+            self.contabilidad_logic.add_contabilidad_record(
+                cliente_id=cliente_id,
+                proceso_id=proceso_id,
+                tipo_contable_id=tipo_contable_id,
+                descripcion=descripcion,
+                monto=monto,
+                fecha=fecha,
+            )
 
-        # Recargar datos actualizados
-        self.get_contabilidad_records_sync(
-            cliente_id=current_filter_cliente_id,
-            proceso_id=current_filter_proceso_id,
-        )
+            # Recargar datos actualizados
+            self.get_contabilidad_records_sync(
+                cliente_id=current_filter_cliente_id,
+                proceso_id=current_filter_proceso_id,
+            )
 
-        self.operation_successful.emit("¡Registro de contabilidad añadido exitosamente!")
+            self.operation_successful.emit(
+                "¡Registro de contabilidad añadido exitosamente!"
+            )
 
-    except Exception as e:
-        self.logger.error("Error inesperado al añadir registro", exc_info=True)
-        self.operation_failed.emit(f"Error inesperado al añadir registro: {str(e)}")
-
+        except Exception as e:
+            self.logger.error("Error inesperado al añadir registro", exc_info=True)
+            self.operation_failed.emit(f"Error inesperado al añadir registro: {str(e)}")
 
     def update_record(
         self, record_id, cliente_id, proceso_id, tipo_id, descripcion, valor, fecha
