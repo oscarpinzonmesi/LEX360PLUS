@@ -1292,13 +1292,6 @@ class DocumentosModule(QWidget):
             
             self.tabla_documentos.clearSelection()
 
-            # ⬇️ Auto-retorno cuando la papelera queda vacía
-            if self.mostrando_papelera and len(documentos_a_mostrar) == 0:
-                logger.info("Papelera vacía → retornando automáticamente a Documentos Activos desde update_document_table.")
-                self.toggle_papelera_view()  # vuelve al tablero principal y recarga
-                return
-
-
         except Exception as e:
             self.logger.error(f"Error al actualizar la tabla de documentos: {e}")
             self.mostrar_error("Error de Actualización de Tabla",
@@ -1469,19 +1462,72 @@ class DocumentosModule(QWidget):
             else:
                 QMessageBox.critical(self, "Error", "Hubo un error al enviar uno o más documentos a la papelera.")
 
-    
-    
     def toggle_papelera_view(self):
-        """Cambiar entre Activos y Papelera sin perder el modo durante la limpieza."""
+        # Ocultar tooltip al interactuar
+        if hasattr(self, 'custom_tooltip_label') and self.custom_tooltip_label is not None:
+            self.custom_tooltip_label.hide()
+        if hasattr(self, 'hide_tooltip_timer') and self.hide_tooltip_timer.isActive():
+            self.hide_tooltip_timer.stop()
+        self._last_hovered_index = QModelIndex()
+
         self.mostrando_papelera = not self.mostrando_papelera
-        logger.info(f"Modo papelera (tras toggle): {self.mostrando_papelera}")
-        try:
-            self.limpiar_filtros_busqueda(keep_mode=True)
-        except TypeError:
-            self.limpiar_filtros_busqueda()
-        self.ejecutar_busqueda()
+        #self.documentos_model.set_mostrando_papelera(self.mostrando_papelera) # ASEGÚRATE que tu modelo tiene este método y se llama 'documentos_model'
 
+        if self.mostrando_papelera:
+            self.btn_papelera.setText("Volver a Documentos Activos")
+            self.label.setText("Gestión de Documentos - Papelera") # Título principal de la ventana
+            
+            # Oculta los botones de acción normales y campos de entrada de carga
+            self.btn_eliminar_seleccion.setVisible(False) # "Enviar a Papelera"
+            self.btn_editar_seleccion.setVisible(False) # "Editar Selección"
+            self.btn_ver_documento.setVisible(False) # "Ver Documento Seleccionado"
+            
+            self.main_load_docs_label.setVisible(False)
+            self.cliente_combo.setVisible(False)
+            self.nom_doc_label.setVisible(False)
+            self.nombre_doc_input.setVisible(False)
+            self.tipo_doc_label.setVisible(False)
+            self.tipo_documento_combo.setVisible(False)
+            self.btn_seleccionar_archivo.setVisible(False)
+            self.btn_agregar.setVisible(False)
+            
+            # Oculta campos de edición si están visibles
+            self.cancelar_edicion() # Llama a cancelar edición para asegurar que los campos de edición se oculten
+            
+            # Muestra los botones de papelera
+            self.btn_restaurar.setVisible(True)
+            self.btn_eliminar_definitivo.setVisible(True)
 
+        else:
+            self.btn_papelera.setText("Ver Papelera")
+            self.label.setText("Gestión de Documentos") # Título principal de la ventana
+            
+            # Muestra los botones de acción normales y campos de entrada de carga
+            self.btn_eliminar_seleccion.setVisible(True)
+            self.btn_editar_seleccion.setVisible(True)
+            self.btn_ver_documento.setVisible(True)
+
+            self.main_load_docs_label.setVisible(True)
+            self.cliente_combo.setVisible(True)
+            self.nom_doc_label.setVisible(True)
+            self.nombre_doc_input.setVisible(True)
+            self.tipo_doc_label.setVisible(True)
+            self.tipo_documento_combo.setVisible(True)
+            self.btn_seleccionar_archivo.setVisible(True)
+            self.btn_agregar.setVisible(True)
+
+            # Oculta los botones de papelera
+            self.btn_restaurar.setVisible(False)
+            self.btn_eliminar_definitivo.setVisible(False)
+
+        self.limpiar_filtros_busqueda() # Limpiar filtros al cambiar de vista
+        self.ejecutar_busqueda() # Centralizamos la carga de datos aquí
+        self.update_action_buttons_state() # Asegura que los botones se activen/desactiven correctamente
+        logger.info(f"Modo papelera: {self.mostrando_papelera}")
+
+        if self.tabla_documentos.selectionModel():
+            self.tabla_documentos.selectionModel().clearSelection()
+        self.update_action_buttons_state()
 
 
     def update_action_buttons_state(self):
@@ -1548,10 +1594,14 @@ class DocumentosModule(QWidget):
                     self.tabla_documentos.selectRow(0)
                     self.on_table_selection_changed()  # fuerza la actualización de botones
 
-                if self.mostrando_papelera and self.documentos_model.rowCount() == 0:
-                    logger.info("Papelera vacía tras restaurar. Volviendo a documentos activos...")
-                    self.toggle_papelera_view()
 
+                # ✅ Si la papelera quedó vacía
+                if self.mostrando_papelera and self.documentos_model.rowCount() == 0:
+                    self.logger.info("Papelera vacía tras restaurar. Volviendo a documentos activos...")
+                    self.toggle_papelera_view()
+                    self._cambiando_vista_auto = True
+                    self.toggle_papelera_view()
+                    self._cambiando_vista_auto = False
 
             else:
                 self.mostrar_error("Error", "No se pudieron restaurar todos los documentos seleccionados.")
@@ -1561,7 +1611,7 @@ class DocumentosModule(QWidget):
             self.logger.error(f"Error en vista - Ocurrió un error al restaurar: {e}", exc_info=True)
 
     def eliminar_documento_definitivamente_seleccionado(self):
-        # Ocultar tooltip al interactuar
+        # Ocultar tooltip al interactuar (estas líneas son buenas y las mantenemos)
         if hasattr(self, 'custom_tooltip_label') and self.custom_tooltip_label is not None:
             self.custom_tooltip_label.hide()
         if hasattr(self, 'hide_tooltip_timer') and self.hide_tooltip_timer.isActive():
@@ -1570,57 +1620,75 @@ class DocumentosModule(QWidget):
 
         selected_indexes = self.tabla_documentos.selectionModel().selectedRows()
         if not selected_indexes:
-            # Sin mensaje; salida silenciosa
+            self.mostrar_advertencia("Eliminar Definitivamente", "Por favor, seleccione uno o más documentos para eliminar definitivamente.")
             return
-
+        
+        # Recolectar información de los documentos seleccionados
         documentos_a_eliminar_info = []
         nombres_documentos = []
         for index in selected_indexes:
             row = index.row()
-            doc_id = self.documentos_model.get_documento_id(row)
-            if isinstance(doc_id, int) and doc_id is not None:
-                doc_nombre = self.documentos_model.data(index.sibling(row, 2), Qt.DisplayRole)
-                documentos_a_eliminar_info.append({'id': doc_id, 'nombre': doc_nombre})
-                nombres_documentos.append(doc_nombre)
+            doc_id = self.documentos_model.get_documento_id(row) # Usar self.documentos_model
+            # Asegúrate de que doc_id sea un entero antes de agregarlo
+            if isinstance(doc_id, int):
+                doc_nombre = self.documentos_model.data(index.sibling(row, 2), Qt.DisplayRole) # Asumiendo columna 2 es el nombre
+                # doc_ruta_relativa no es necesaria para la llamada al controlador aquí, pero la mantendremos si la usas para otra cosa
+                # doc_ruta_relativa = self.documentos_model.get_documento_path(row) # Usar self.documentos_model
+                
+                if doc_id is not None: # doble chequeo aunque ya validamos el tipo
+                    documentos_a_eliminar_info.append({'id': doc_id, 'nombre': doc_nombre}) # No necesitamos ruta_relativa en esta info
+                    nombres_documentos.append(doc_nombre)
+                else:
+                    logger.warning(f"No se pudo obtener el ID del documento en la fila {row} para eliminar definitivamente.")
             else:
-                return  # ID inválido: salir silencioso
-
+                logger.error(f"El ID del documento en la fila {row} no es un entero válido: {doc_id}. No se puede eliminar.")
+                self.mostrar_error("Error de Datos", f"El ID del documento seleccionado en la fila {row} es inválido.")
+                return # Detener la operación si hay un ID no válido.
+        
         if not documentos_a_eliminar_info:
+            self.mostrar_advertencia("Error", "No se encontraron IDs de documentos válidos para eliminar.")
             return
 
-        nombres_str = ", ".join(nombres_documentos[:3]) + (", ..." if len(nombres_documentos) > 3 else "")
+        nombres_str = ", ".join(nombres_documentos[:3]) # Mostrar los primeros 3, si hay más
+        if len(nombres_documentos) > 3:
+            nombres_str += ", ..."
 
-        resp = QMessageBox.question(
-            self,
-            "Confirmar Eliminación Definitiva",
-            f"¡ADVERTENCIA! Esta acción eliminará el/los documento(s) PERMANENTEMENTE.\n({nombres_str})\n¿Está seguro?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
-        )
+        resp = QMessageBox.question(self, "Confirmar Eliminación Definitiva",
+                                    f"¡ADVERTENCIA! Esta acción eliminará el/los documento(s) PERMANENTEMENTE de la base de datos y, si existe, del sistema de archivos.\n({nombres_str})\n¿Está seguro de que desea continuar?",
+                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        
+        if resp == QMessageBox.Yes:
+            all_success = True
+            failed_docs_list = []
 
-        if resp != QMessageBox.Yes:
-            return
-
-        all_success = True
-        for doc_info in documentos_a_eliminar_info:
-            try:
-                success, _ = self.controller.eliminar_documento_definitivamente(doc_info['id'])
-                if not success:
+            for doc_info in documentos_a_eliminar_info:
+                doc_id = doc_info['id']
+                doc_nombre = doc_info['nombre']
+                try:
+                    success, message = self.controller.eliminar_documento_definitivamente(doc_id)
+                    if success:
+                        logger.info(f"Documento '{doc_nombre}' (ID: {doc_id}) eliminado permanentemente. Mensaje: {message}")
+                    else:
+                        all_success = False
+                        failed_docs_list.append(f"'{doc_nombre}' (ID: {doc_id}) - Falló: {message}")
+                except Exception as e:
                     all_success = False
-            except Exception:
-                all_success = False
+                    failed_docs_list.append(f"'{doc_nombre}' (ID: {doc_id}) - Error inesperado: {e}")
+                    logger.error(f"Error inesperado al eliminar definitivamente documento ID {doc_id}: {e}", exc_info=True)
 
-        if all_success:
-            QMessageBox.information(self, "Éxito", "Documento(s) eliminado(s) permanentemente.")
+            if all_success:
+                QMessageBox.information(self, "Éxito", "Documento(s) eliminado(s) permanentemente.")
+            else:
+                if len(failed_docs_list) == len(documentos_a_eliminar_info):
+                    self.mostrar_error("Error Grave", "No se pudo eliminar ninguno de los documentos seleccionados permanentemente.")
+                else:
+                    self.mostrar_advertencia("Eliminación Parcial", 
+                                            f"Se eliminaron algunos documentos, pero hubo problemas con:\n- " + "\n- ".join(failed_docs_list))
 
-        # Refrescar
-        self.tabla_documentos.clearSelection()
-        self.ejecutar_busqueda()
-        # Si quedamos en papelera y ya no hay filas, volver a Activos
-        modelo = getattr(self, 'documentos_model', None) or getattr(self, 'tabla_documentos_model', None)
-        if self.mostrando_papelera and modelo and modelo.rowCount() == 0:
-            logger.info("Papelera vacía tras eliminación → retornando a Documentos Activos.")
-            self.mostrar_documentos_activos()
+            # 🔥 Ajuste clave:
+            # En lugar de volver a llamar búsqueda y provocar que el mensaje aparezca sin selección
+            self.tabla_documentos.clearSelection()   # Limpia la selección
+            self.ejecutar_busqueda()                 # Refresca la tabla sin provocar advertencias
 
 
     def ejecutar_busqueda(self):
@@ -1641,13 +1709,17 @@ class DocumentosModule(QWidget):
         final_cliente_id_filter = cliente_id_from_combo
         final_cliente_nombre_filter = ""
 
+        # Si no hay selección en combo, intentamos con el campo de texto
         if cliente_id_from_combo is None and cliente_input_text:
             try:
+                # Si es un número → cliente_id
                 potential_cliente_id = int(cliente_input_text)
                 final_cliente_id_filter = potential_cliente_id
             except ValueError:
+                # Si es texto → nombre del cliente
                 final_cliente_nombre_filter = cliente_input_text
 
+        # --- Filtros de documento (nombre, tipo, etc.) ---
         combined_doc_search_text = self.search_doc_input.text().strip()
 
         final_documento_id_filter = None
@@ -1655,17 +1727,21 @@ class DocumentosModule(QWidget):
 
         if combined_doc_search_text:
             try:
+                # Si es número → lo tratamos como ID del documento
                 potential_doc_id = int(combined_doc_search_text)
                 final_documento_id_filter = potential_doc_id
             except ValueError:
+                # Si no es número → se busca por nombre del documento
                 final_nombre_doc_filter = combined_doc_search_text
                 logger.info(f"Texto de búsqueda de documento '{combined_doc_search_text}' no es un ID numérico. Se buscará por nombre.")
+
 
         tipo_documento_filtro = self.search_tipo_doc_combo.currentText()
         if tipo_documento_filtro == "Todos":
             tipo_documento_filtro = None
 
         mostrando_papelera_actual = self.mostrando_papelera
+        print(f"DEBUG: Valor de self.mostrando_papelera (interno) para la búsqueda: {mostrando_papelera_actual}")
 
         logger.info(
             f"FILTROS FINALES enviados al controlador (unificado): "
@@ -1676,10 +1752,6 @@ class DocumentosModule(QWidget):
             f"mostrando_papelera={mostrando_papelera_actual}"
         )
 
-        # ⛔ Evitar búsquedas desfasadas si el modo cambió
-        if mostrando_papelera_actual != self.mostrando_papelera:
-            return
-
         try:
             documentos_obtenidos = self.controller.buscar_documentos(
                 cliente_id_exacto=final_cliente_id_filter,
@@ -1688,38 +1760,27 @@ class DocumentosModule(QWidget):
                 documento_id_filtro=final_documento_id_filter,
                 tipo_documento_filtro=tipo_documento_filtro,
                 mostrando_papelera=mostrando_papelera_actual
-            ) or []
+            ) or []   # ⚠️ siempre aseguramos que sea lista
 
             logger.info(f"Controlador devolvió {len(documentos_obtenidos)} documentos.")
+            print(f"DEBUG: Controlador devolvió {len(documentos_obtenidos)} documentos.")
+
             self.update_document_table(documentos_obtenidos)
 
-            # Mensaje de tabla
             if not documentos_obtenidos:
+                # ⚠️ Nuevo comportamiento
                 self.tabla_documentos.setVisible(False)
-                self.empty_table_label.setText("La papelera está vacía." if mostrando_papelera_actual else "No se encontraron documentos para ese cliente.")
+                self.empty_table_label.setText("No se encontraron documentos para ese cliente.")
                 self.empty_table_label.setVisible(True)
             else:
                 self.tabla_documentos.setVisible(True)
                 self.empty_table_label.setVisible(False)
 
             if mostrando_papelera_actual:
-                # Botones visibles en PAPELERA
                 self.btn_restaurar.setVisible(True)
                 self.btn_eliminar_definitivo.setVisible(True)
                 self.btn_papelera.setText("Ver Documentos Activos")
                 self.btn_papelera.setToolTip("Haz clic para ver los documentos activos.")
-                if hasattr(self, "btn_eliminar_seleccion"): self.btn_eliminar_seleccion.setVisible(False)  # "Enviar a Papelera"
-                if hasattr(self, "btn_editar_seleccion"):   self.btn_editar_seleccion.setVisible(False)
-                if hasattr(self, "btn_ver_documento"):      self.btn_ver_documento.setVisible(False)
-
-                self._set_enviar_papelera_visible(False)
-                # Ocultar los que NO deben verse en papelera
-                if hasattr(self, 'btn_enviar_papelera'):
-                    self.btn_enviar_papelera.setVisible(False)
-                if hasattr(self, 'btn_editar_seleccion'):
-                    self.btn_editar_seleccion.setVisible(False)
-
-                # Ocultar controles de carga/edición
                 self.btn_seleccionar_archivo.setVisible(False)
                 self.btn_agregar.setVisible(False)
                 self.main_load_docs_label.setVisible(False)
@@ -1735,25 +1796,23 @@ class DocumentosModule(QWidget):
                 self.doc_id_label.setVisible(False)
                 self.doc_id_display.setVisible(False)
 
-                # Si quedó vacía, regresar automáticamente
                 if not documentos_obtenidos:
-                    logger.info("Papelera vacía → retornando a Documentos Activos.")
-                    self.mostrar_documentos_activos()
-                    return
+                    self.tabla_documentos.setVisible(False)
+                    self.empty_table_label.setText("La papelera está vacía.")
+                    self.empty_table_label.setVisible(True)
+                else:
+                    self.tabla_documentos.setVisible(True)
+                    self.empty_table_label.setVisible(False)
 
-            else:
-                # Botones visibles en ACTIVOS
+            else:  # Documentos activos
                 self.btn_restaurar.setVisible(False)
                 self.btn_eliminar_definitivo.setVisible(False)
                 self.btn_papelera.setText("Ver Papelera")
                 self.btn_papelera.setToolTip("Haz clic para ver los documentos enviados a la papelera.")
-                self._set_enviar_papelera_visible(True) 
-                if hasattr(self, 'btn_enviar_papelera'):
-                    self.btn_enviar_papelera.setVisible(True)
-                if hasattr(self, 'btn_editar_seleccion'):
-                    self.btn_editar_seleccion.setVisible(True)
+                if hasattr(self, "btn_eliminar_seleccion"): self.btn_eliminar_seleccion.setVisible(True)   # "Enviar a Papelera"
+                if hasattr(self, "btn_editar_seleccion"):   self.btn_editar_seleccion.setVisible(True)
+                if hasattr(self, "btn_ver_documento"):      self.btn_ver_documento.setVisible(True)
 
-                # Controles de carga
                 self.btn_seleccionar_archivo.setVisible(True)
                 self.btn_agregar.setVisible(True)
                 self.main_load_docs_label.setVisible(True)
@@ -1771,51 +1830,59 @@ class DocumentosModule(QWidget):
                     self.doc_id_label.setVisible(False)
                     self.doc_id_display.setVisible(False)
 
+                if not documentos_obtenidos:
+                    self.tabla_documentos.setVisible(False)
+                    self.empty_table_label.setText("No hay documentos disponibles. ¡Agrega uno nuevo!")
+                    self.empty_table_label.setVisible(True)
+                else:
+                    self.tabla_documentos.setVisible(True)
+                    self.empty_table_label.setVisible(False)
+
             self.update_action_buttons_state()
 
         except Exception as e:
             logger.error(f"Error al ejecutar búsqueda en el controlador: {e}")
             self.mostrar_error("Error de Búsqueda", f"No se pudieron cargar los documentos: {e}")
 
-    def limpiar_filtros_busqueda(self, keep_mode=False):
-        """Limpia filtros y campos; si keep_mode=True NO toca self.mostrando_papelera."""
-        logger.info("Limpiando todos los filtros de búsqueda...")
+    
+    def limpiar_filtros_busqueda(self):
+        self.logger.info("Limpiando todos los filtros de búsqueda...") # Añadí este log para trazar
 
-        # Filtros de búsqueda
-        try: self.search_cliente_combo.setCurrentIndex(0)
-        except: pass
-        try: self.search_cliente_input.clear()
-        except: pass
-        try: self.search_doc_input.clear()
-        except: pass
-        try:
-            idx_todos = self.search_tipo_doc_combo.findText("Todos")
-            if idx_todos >= 0:
-                self.search_tipo_doc_combo.setCurrentIndex(idx_todos)
-        except: pass
+        # Limpiar los campos de entrada de texto (parte de los filtros de la tabla)
+        self.cliente_search_input.clear() # Esto limpia el input de búsqueda de cliente para los filtros
+        self.search_doc_input.clear() # Asegura que el campo unificado se limpia
+        self.search_doc_id_input.clear() 
 
-        # Campos de carga/edición
-        try: self.cliente_combo.setCurrentIndex(0)
-        except: pass
-        try: self.nombre_doc_input.clear()
-        except: pass
-        try: self.tipo_documento_combo.setCurrentIndex(0)
-        except: pass
-        try: self.archivo_path_display.clear()
-        except: pass
+        # Restablecer los ComboBox a su primera opción ("Todos los clientes", "Todos") (parte de los filtros de la tabla)
+        self.search_cliente_combo.setCurrentIndex(0)
+        self.search_tipo_doc_combo.setCurrentIndex(0)
 
-        if not getattr(self, "is_editing", False):
-            for w in ("label_ruta_archivo","archivo_path_display","btn_editar","btn_cancelar_edicion","doc_id_label","doc_id_display"):
-                if hasattr(self, w):
-                    getattr(self, w).setVisible(False)
+        # Restablecer la etiqueta "Buscar Cliente:" a su texto original (parte de los filtros de la tabla)
+        self.search_client_label_main.setText("Buscar Cliente:") 
 
-        if not keep_mode:
-            # Si quieres forzar activos en limpiezas manuales, descomenta:
-            # self.mostrando_papelera = False
-            pass
+        # Ocultar tooltip al limpiar filtros (esto ya estaba y es correcto)
+        self.custom_tooltip_label.hide()
+        if self.hide_tooltip_timer.isActive():
+            self.hide_tooltip_timer.stop()
+        self._last_hovered_index = QModelIndex()
+        
+        # Llama a on_search_cliente_changed para reconfigurar la UI y los placeholders para los FILTROS DE LA TABLA
+        # Esto también ejecutará la búsqueda inicial de la tabla.
+        self.on_search_cliente_changed()
 
-        logger.info(f"FILTROS FINALES enviados al controlador (unificado): cliente_id_exacto=None, cliente_nombre_filtro_texto='', documento_id_filtro=None, tipo_documento_filtro='None', mostrando_papelera={self.mostrando_papelera}")
+        # --- AÑADIMOS LAS LÍNEAS PARA LIMPIAR LA SECCIÓN DE CARGA DE DOCUMENTOS ---
+        # Esto asegura que el cliente seleccionado para CARGAR un documento también se reinicie.
+        self.cliente_combo.setCurrentIndex(0) # Reinicia el ComboBox de selección de cliente para la carga
+        self.cliente_search_input.clear() # Limpia el campo de texto de búsqueda de cliente para la carga
+        self.cliente_search_results_list.clear() # Limpia la lista de resultados de búsqueda (donde salen los nombres de clientes)
+        self.cliente_search_results_list.setVisible(False) # Oculta la lista de resultados de búsqueda
+        
+        # Llama a _handle_cliente_combo_selection_mode para asegurar que la UI de carga de documentos
+        # se reinicie correctamente (mostrar el combo, ocultar la barra de búsqueda si estaba activa).
+        self._handle_cliente_combo_selection_mode()
+        # --------------------------------------------------------------------------
 
+        self.logger.info("Filtros de búsqueda limpiados y campos de carga de documentos reiniciados.")
 
     def on_search_cliente_changed(self):
         # Ocultar tooltip al interactuar
@@ -1879,28 +1946,6 @@ class DocumentosModule(QWidget):
     def show_info_message(self, title: str, message: str):
         """Muestra un mensaje de información al usuario."""
         QMessageBox.information(self, title, message)
-    
-    def mostrar_documentos_activos(self):
-        """Forzar vista de documentos activos y refrescar."""
-        self.mostrando_papelera = False
-        try:
-            self.limpiar_filtros_busqueda(keep_mode=True)
-        except TypeError:
-            self.limpiar_filtros_busqueda()
-        self.ejecutar_busqueda()
-
-    def _set_enviar_papelera_visible(self, visible: bool):
-        for name in (
-            "btn_enviar_papelera",
-            "btn_enviar_a_papelera",
-            "btnEnviarPapelera",
-            "enviar_papelera_btn",
-        ):
-            btn = getattr(self, name, None)
-            if btn is not None:
-                btn.setVisible(visible)
-
-
 
     def on_btn_restaurar_clicked(self):
         try:
@@ -1969,7 +2014,9 @@ class DocumentosModule(QWidget):
         except Exception as e:
             self.mostrar_error("Error en vista", f"Ocurrió un error al eliminar: {e}")
             logger.error(f"Error al eliminar definitivamente: {e}", exc_info=True)
-
+<<<<<<< HEAD
+# prueba de commit automático
+=======
         
     def on_restaurar_clicked(self):
         """
@@ -1992,3 +2039,5 @@ class DocumentosModule(QWidget):
 
         except Exception as e:
             print(f"Error al restaurar documento: {e}")
+
+>>>>>>> develop
