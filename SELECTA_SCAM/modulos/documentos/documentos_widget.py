@@ -1473,7 +1473,6 @@ class DocumentosModule(QWidget):
     
     def toggle_papelera_view(self):
         self.mostrando_papelera = not self.mostrando_papelera
-
         if hasattr(self, 'custom_tooltip_label') and self.custom_tooltip_label is not None:
             self.custom_tooltip_label.hide()
         if hasattr(self, 'hide_tooltip_timer') and self.hide_tooltip_timer.isActive():
@@ -1627,28 +1626,25 @@ class DocumentosModule(QWidget):
 
         selected_indexes = self.tabla_documentos.selectionModel().selectedRows()
         if not selected_indexes:
+            # Sin mensaje; salida silenciosa
             return
-        
+
         documentos_a_eliminar_info = []
         nombres_documentos = []
         for index in selected_indexes:
             row = index.row()
             doc_id = self.documentos_model.get_documento_id(row)
-            if isinstance(doc_id, int):
+            if isinstance(doc_id, int) and doc_id is not None:
                 doc_nombre = self.documentos_model.data(index.sibling(row, 2), Qt.DisplayRole)
-                if doc_id is not None:
-                    documentos_a_eliminar_info.append({'id': doc_id, 'nombre': doc_nombre})
-                    nombres_documentos.append(doc_nombre)
+                documentos_a_eliminar_info.append({'id': doc_id, 'nombre': doc_nombre})
+                nombres_documentos.append(doc_nombre)
             else:
-                logger.error(f"ID inválido en fila {row}: {doc_id}")
-                return
-        
+                return  # ID inválido: salir silencioso
+
         if not documentos_a_eliminar_info:
             return
 
-        nombres_str = ", ".join(nombres_documentos[:3])
-        if len(nombres_documentos) > 3:
-            nombres_str += ", ..."
+        nombres_str = ", ".join(nombres_documentos[:3]) + (", ..." if len(nombres_documentos) > 3 else "")
 
         resp = QMessageBox.question(
             self,
@@ -1657,40 +1653,26 @@ class DocumentosModule(QWidget):
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
-        
-        if resp == QMessageBox.Yes:
-            all_success = True
-            for doc_info in documentos_a_eliminar_info:
-                try:
-                    success, _ = self.controller.eliminar_documento_definitivamente(doc_info['id'])
-                    if not success:
-                        all_success = False
-                except Exception as e:
+
+        if resp != QMessageBox.Yes:
+            return
+
+        all_success = True
+        for doc_info in documentos_a_eliminar_info:
+            try:
+                success, _ = self.controller.eliminar_documento_definitivamente(doc_info['id'])
+                if not success:
                     all_success = False
-                    logger.error(f"Error al eliminar documento ID {doc_info['id']}: {e}", exc_info=True)
+            except Exception:
+                all_success = False
 
-            if all_success:
-                QMessageBox.information(self, "Éxito", "Documento(s) eliminado(s) permanentemente.")
+        if all_success:
+            QMessageBox.information(self, "Éxito", "Documento(s) eliminado(s) permanentemente.")
 
-            # 🔥 Refrescar tabla
-            self.tabla_documentos.clearSelection()
-            self.ejecutar_busqueda()
-
-            # 🔥 Ajuste: si estamos en papelera y quedó vacía, volver automáticamente a documentos activos
-            if self.mostrando_papelera and self.documentos_model.rowCount() == 0:
-                logger.info("Último documento eliminado de papelera → retornando al tablero principal (activos).")
-                self.mostrar_documentos_activos()
-
-
-            # 👇 Forzar actualización de la vista antes de chequear filas
-            from PyQt5.QtWidgets import QApplication
-            QApplication.processEvents()
-
-            # 👇 Si ya no quedan documentos → ir automáticamente a Documentos Activos
-            if self.documentos_model.rowCount() == 0:
-                self.mostrar_documentos_activos()
-
-
+        # Refrescar
+        self.tabla_documentos.clearSelection()
+        self.ejecutar_busqueda()
+        # (El auto-retorno al tablero si queda en cero lo hace update_document_table)
 
     def ejecutar_busqueda(self):
         """
