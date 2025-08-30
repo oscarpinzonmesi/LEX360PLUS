@@ -1462,6 +1462,41 @@ class DocumentosModule(QWidget):
             else:
                 QMessageBox.critical(self, "Error", "Hubo un error al enviar uno o más documentos a la papelera.")
 
+    def mostrar_documentos_activos(self):
+        """Forzar vista de documentos activos (oculta controles de papelera)."""
+        self.mostrando_papelera = False
+
+        # Botones/controles de papelera
+        self.btn_restaurar.setVisible(False)
+        self.btn_eliminar_definitivo.setVisible(False)
+
+        # Botones de vista normal
+        if hasattr(self, "btn_eliminar_seleccion"): self.btn_eliminar_seleccion.setVisible(True)   # "Enviar a Papelera"
+        if hasattr(self, "btn_editar_seleccion"):   self.btn_editar_seleccion.setVisible(True)
+        if hasattr(self, "btn_ver_documento"):      self.btn_ver_documento.setVisible(True)
+
+        # Campos de carga
+        self.main_load_docs_label.setVisible(True)
+        self.cliente_combo.setVisible(True)
+        self.nom_doc_label.setVisible(True)
+        self.nombre_doc_input.setVisible(True)
+        self.tipo_doc_label.setVisible(True)
+        self.tipo_documento_combo.setVisible(True)
+        self.btn_seleccionar_archivo.setVisible(True)
+        self.btn_agregar.setVisible(True)
+
+        self.btn_papelera.setText("Ver Papelera")
+        self.btn_papelera.setToolTip("Haz clic para ver los documentos enviados a la papelera.")
+        if self.tabla_documentos.selectionModel():
+            self.tabla_documentos.selectionModel().clearSelection()
+
+        # Recargar
+        self.limpiar_filtros_busqueda()
+        self.ejecutar_busqueda()
+        self.update_action_buttons_state()
+
+
+
     def toggle_papelera_view(self):
         # Ocultar tooltip al interactuar
         if hasattr(self, 'custom_tooltip_label') and self.custom_tooltip_label is not None:
