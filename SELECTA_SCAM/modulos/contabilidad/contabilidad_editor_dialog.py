@@ -220,11 +220,12 @@ class ContabilidadEditorDialog(QDialog):
         datos = {
             "cliente_id": cliente_id,
             "proceso_id": self.proceso_input.currentData(),
-            "tipo_id": tipo_id,
+            "tipo_contable_id": tipo_id,   # <--- corregido
             "descripcion": self.descripcion_input.text().strip(),
-            "valor": valor_numeric,
+            "monto": valor_numeric,        # <--- ojo: en el modelo se llama `monto`, no `valor`
             "fecha": self.fecha_input.date().toString("yyyy-MM-dd")
         }
+
         print(f"DEBUG DIALOG: Valores devueltos: {datos}")
         return datos
 
