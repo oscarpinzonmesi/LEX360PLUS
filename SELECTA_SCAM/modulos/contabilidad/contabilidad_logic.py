@@ -121,10 +121,11 @@ class ContabilidadLogic:
         cliente_id: int = None,
         proceso_id: int = None,
         search_term: str = None,
-        tipo_contable_id: int = None,  # 🔄 cambio aquí
+        tipo_contable_id: int = None,
     ) -> List[Tuple]:
         """
         Retorna datos para mostrar en la UI, con filtros extra.
+        Permite buscar por cliente_id exacto o por nombre de cliente.
         """
         with self.db_manager() as session:
             query = (
@@ -142,26 +143,33 @@ class ContabilidadLogic:
                 .join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
             )
 
+            # 📌 Filtros directos
             if cliente_id:
                 query = query.filter(Contabilidad.cliente_id == cliente_id)
             if proceso_id:
                 query = query.filter(Contabilidad.proceso_id == proceso_id)
-            if tipo_contable_id:  # 🔄 cambio aquí
+            if tipo_contable_id:
                 query = query.filter(Contabilidad.tipo_contable_id == tipo_contable_id)
 
+            # 📌 Nuevo: búsqueda flexible de cliente
             if search_term:
-                query = query.filter(Contabilidad.descripcion.ilike(f"%{search_term}%"))
+                if search_term.isdigit():  # Si escriben un número → buscar por ID
+                    query = query.filter(Cliente.id == int(search_term))
+                else:  # Si escriben texto → buscar por nombre
+                    query = query.filter(Cliente.nombre.ilike(f"%{search_term}%"))
 
             results = query.all()
+
+            # 📌 Preparar resultados para la tabla
             return [
                 (
-                    r[0],
-                    r[1],
-                    r[2] or "",
-                    r[3],
-                    r[4],
-                    float(r[5]),
-                    r[6].strftime("%Y-%m-%d"),
+                    r[0],  # ID
+                    r[1],  # Cliente.nombre
+                    r[2] or "",  # Proceso.radicado (puede ser None)
+                    r[3],  # TipoContable.nombre
+                    r[4],  # Descripción
+                    float(r[5]),  # Monto (float)
+                    r[6].strftime("%Y-%m-%d"),  # Fecha formateada
                 )
                 for r in results
             ]
