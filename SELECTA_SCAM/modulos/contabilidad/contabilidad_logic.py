@@ -21,15 +21,15 @@ class ContabilidadLogic:
     # -------------------------------
 
     def add_contabilidad_record(self, cliente_id: int, proceso_id: Optional[int],
-                                tipo_id: int, descripcion: str,
-                                valor: float, fecha: date) -> Contabilidad:
+                                tipo_contable_id: int, descripcion: str,
+                                monto: float, fecha: date) -> Contabilidad:
         with self.db_manager() as session:
             record = Contabilidad(
                 cliente_id=cliente_id,
                 proceso_id=proceso_id,
-                tipo_id=tipo_id,
+                tipo_contable_id=tipo_contable_id,
                 descripcion=descripcion,
-                monto=valor,
+                monto=monto,
                 fecha=fecha
             )
             session.add(record)
@@ -37,6 +37,7 @@ class ContabilidadLogic:
             session.refresh(record)
             logger.info(f"ContabilidadLogic: Registro añadido ID={record.id}")
             return record
+
 
     def update_contabilidad_record(self, record_id: int, cliente_id: int, proceso_id: Optional[int],
                                    tipo_id: int, descripcion: str,
