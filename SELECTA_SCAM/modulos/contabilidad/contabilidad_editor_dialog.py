@@ -83,7 +83,7 @@ class ContabilidadEditorDialog(QDialog):
             self.cliente_search_results_list.sizePolicy().Expanding
         )
         self.cliente_search_results_list.hide()
-        self.cliente_search_results_list.setMinimumWidth(900)
+        self.cliente_search_results_list.setMinimumWidth(600)
 
 
         self.cliente_section_layout.addWidget(self.cliente_input)
