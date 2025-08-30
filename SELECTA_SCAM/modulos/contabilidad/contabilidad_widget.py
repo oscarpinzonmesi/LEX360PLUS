@@ -143,14 +143,13 @@ class ContabilidadTableModel(QAbstractTableModel):
         return None
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
-    if role == Qt.DisplayRole:
-        if orientation == Qt.Horizontal:
-            return self.HEADERS[section]
-        elif orientation == Qt.Vertical:
-            # 🔎 No mostrar nada en encabezado vertical
-            return ""
-    return QVariant()
-
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                return self.HEADERS[section]
+            elif orientation == Qt.Vertical:
+                # 🔎 No mostrar nada en encabezado vertical
+                return ""
+        return QVariant()
 
 
 class ContabilidadWidget(QWidget):
