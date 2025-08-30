@@ -158,18 +158,18 @@ class ContabilidadLogic:
         Obtiene un solo registro formateado para edición.
         """
         with self.db_manager() as session:
-            rec = session.query(
-                Contabilidad.id,
-                Cliente.nombre,
-                Proceso.radicado,
-                TipoContable.nombre,
-                Contabilidad.descripcion,
-                Contabilidad.monto,
-                Contabilidad.fecha
-            ).join(Cliente
-            ).outerjoin(Proceso
-            ).join(TipoContable
-            ).filter(Contabilidad.id == record_id).first()
+            query = session.query(
+            Contabilidad.id,
+            Cliente.nombre,
+            Proceso.radicado,
+            TipoContable.nombre,
+            Contabilidad.descripcion,
+            Contabilidad.monto,
+            Contabilidad.fecha
+        ).join(Cliente, Contabilidad.cliente_id == Cliente.id
+        ).outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id
+        ).join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
+
 
             if not rec:
                 return None
