@@ -551,76 +551,49 @@ class ContabilidadWidget(QWidget):
                 current_filter_cliente_id=current_filter_cliente_id,
                 current_filter_proceso_id=current_filter_proceso_id
             )
-
     def _get_current_filter_ids(self):
-        """Helper para obtener los IDs de filtro actuales de los comboboxes."""
         cliente_id = self.cliente_filter_combo.currentData()
-        if cliente_id == -1: # Ajusta -1 si usas otro valor para "Todos"
+        if cliente_id == -1:
             cliente_id = None
         proceso_id = self.proceso_input.currentData()
-        if proceso_id == -1: # Ajusta -1 si usas otro valor para "Todos"
+        if proceso_id == -1:
             proceso_id = None
         return cliente_id, proceso_id
 
     def on_proceso_filter_changed(self, index):
-        cliente_id = self.cliente_filter_combo.currentData() # Obtener el cliente seleccionado también
-        proceso_id = self.proceso_input.currentData() # <--- CORRECCIÓN DE NOMBRE DE VARIABLE
-        self.update_contabilidad_display() # <--- ACTUALIZAR LA VISTA CENTRALIZADAMENTE
+        self.update_contabilidad_display()
 
     def update_proceso_combo(self, procesos_data: list):
-        """
-        Actualiza el QComboBox de procesos con los datos proporcionados por el controlador.
-        Se asegura de que el primer elemento sea "Sin proceso asociado..." con valor None.
-        """
         self.proceso_input.blockSignals(True)
         self.proceso_input.clear()
-        self.proceso_input.addItem("Sin proceso asociado (opcional)", None) # Opción por defecto
+        self.proceso_input.addItem("Sin proceso asociado (opcional)", None)
         for proceso_id, radicado in procesos_data:
             self.proceso_input.addItem(radicado, proceso_id)
-        self.proceso_input.setCurrentIndex(0) # Seleccionar la opción por defecto
+        self.proceso_input.setCurrentIndex(0)
         self.proceso_input.blockSignals(False)
 
     def update_tipo_combo(self, tipos_data: list):
-        """
-        Actualiza el QComboBox de tipos con los datos proporcionados por el controlador.
-        """
         self.tipo_input.blockSignals(True)
         self.tipo_input.clear()
         self.tipo_input.addItem("Todos los tipos", None)
-        
-        # --- CAMBIO IMPORTANTE AQUÍ ---
         for tipo in tipos_data:
             self.tipo_input.addItem(tipo.nombre, tipo.id)
-
         self.tipo_input.setCurrentIndex(0)
         self.tipo_input.blockSignals(False)
 
     def on_cliente_selected(self, index):
-        """
-        Maneja la selección de un cliente en el filtro.
-        Ahora, en lugar de cargar procesos directamente, se centra en recargar
-        los datos de contabilidad y el resumen basándose en el cliente seleccionado.
-        """
-        cliente_id = self.cliente_filter_combo.itemData(index) # <-- CORRECCIÓN AQUÍ
-        if cliente_id is None or cliente_id == -1: # Ajusta 'None' si usas -1 para "Todos"
-            self.update_proceso_combo([]) # Necesitarás implementar este método si no lo tienes
-            self.proceso_input.setEnabled(False) # Deshabilitar el combo de procesos
+        cliente_id = self.cliente_filter_combo.itemData(index)
+        if cliente_id is None or cliente_id == -1:
+            self.update_proceso_combo([])
+            self.proceso_input.setEnabled(False)
         else:
-            self.proceso_input.setEnabled(True) # Habilitar el combo de procesos si hay un cliente seleccionado
-        self.update_contabilidad_display() # <-- CORRECCIÓN AQUÍ
+            self.proceso_input.setEnabled(True)
+        self.update_contabilidad_display()
 
     def on_proceso_selected(self, index):
-        """
-        Maneja la selección de un proceso en el filtro, recargando los datos y el resumen.
-        """
-        cliente_id = self.cliente_input.currentData()
-        proceso_id = self.proceso_input.currentData()
-        self.update_contabilidad_display() # <--- REEMPLAZA self.load_data() y get_summary_data
+        self.update_contabilidad_display()
 
     def update_summary_display(self, summary_data: dict):
-        """
-        Actualiza la UI con los datos de resumen financiero, incluyendo el color del saldo.
-        """
         self.total_ingresos_display.setText(f"${summary_data.get('total_ingresos', 0.0):,.2f}")
         self.total_gastos_display.setText(f"${summary_data.get('total_gastos', 0.0):,.2f}")
         self.saldo_display.setText(f"${summary_data.get('saldo', 0.0):,.2f}")
@@ -631,125 +604,70 @@ class ContabilidadWidget(QWidget):
             self.saldo_display.setStyleSheet("color: green; font-weight: bold;")
         else:
             self.saldo_display.setStyleSheet("color: black;")
-    
-    
-    # En SELECTA_SCAM/modulos/contabilidad/contabilidad_widget.py
-
-    # En: contabilidad_widget.py
-# Reemplaza el método completo con este:
 
     def update_contabilidad_display(self):
-        """
-        Actualiza la QTableView y los resúmenes.
-        Este método ahora es inteligente y sabe de qué campo de búsqueda leer.
-        """
-        self.logger.info("Widget: Solicitando actualización de la vista al controlador.")
         try:
-            # Obtenemos los IDs de los filtros de los ComboBox
             cliente_id = self.cliente_filter_combo.currentData()
             proceso_id = self.proceso_input.currentData()
             tipo_id = self.tipo_input.currentData()
-            
-            # --- INICIO DE LA CORRECCIÓN ---
-            search_term = ""
-            # Verificamos si el modo de búsqueda por cliente está activo
+            search_term = self.cliente_search_input.text() if self.is_search_mode_active else self.search_input.text()
             if self.is_search_mode_active:
-                # Si es así, usamos el texto del campo de búsqueda de cliente
-                search_term = self.cliente_search_input.text()
-                # Y nos aseguramos de que el filtro del ComboBox de cliente no interfiera
-                cliente_id = None 
-            else:
-                # Si no, usamos el campo de búsqueda general (el de la derecha)
-                search_term = self.search_input.text()
-            # --- FIN DE LA CORRECCIÓN ---
-
-            # Le pedimos al controlador que nos traiga los datos con los filtros correctos
+                cliente_id = None
             self.controller.get_contabilidad_records_sync(
                 cliente_id=cliente_id,
                 proceso_id=proceso_id,
-                search_term=search_term, # Pasamos el término de búsqueda correcto
+                search_term=search_term,
                 tipo_id=tipo_id
             )
-
         except Exception as e:
-            self.logger.error(f"Error al solicitar actualización de la vista: {e}", exc_info=True)
             QMessageBox.critical(self, "Error Crítico", f"No se pudo actualizar la vista: {e}")
 
-
-            
     def on_filter_changed(self):
-        """
-        Maneja los cambios en cualquiera de los filtros para actualizar la vista.
-        """
         self.update_contabilidad_display()
 
-
     def generar_resumen_pdf(self):
-        """
-        Genera un informe PDF con el resumen de contabilidad.
-        """
         options = QFileDialog.Options()
         file_name, _ = QFileDialog.getSaveFileName(self, "Guardar Resumen PDF", "", "PDF Files (*.pdf)", options=options)
-        
         if file_name:
-            # Usar los nombres de variables correctos para los componentes de la UI
             cliente_id = self.cliente_filter_combo.currentData()
             proceso_id = self.proceso_input.currentData()
-            search_term = self.cliente_search_input.text() # Este es el nombre correcto
+            search_term = self.cliente_search_input.text()
             tipo_id = self.tipo_input.currentData()
-            
-            # Llamar al controlador con todos los filtros
             success = self.controller.generate_summary_pdf(file_name, cliente_id, proceso_id, search_term, tipo_id)
-            
             if success:
                 QMessageBox.information(self, "Éxito", "Resumen PDF generado exitosamente.")
             else:
                 QMessageBox.warning(self, "Error", "Ocurrió un error al generar el resumen PDF.")
 
     def load_data(self):
-        """
-        Carga los datos en el modelo de la tabla, aplicando los filtros actualmente seleccionados.
-        """
         cliente_id = self.cliente_input.currentData()
         proceso_id = self.proceso_input.currentData()
         self.contabilidad_table_model.load_data(cliente_id, proceso_id)
         self.update_action_button_states()
-        
+
     def clear_inputs(self):
-        """Limpia los campos de filtro superiores."""
         self.cliente_input.setCurrentIndex(0)
-        self.proceso_input.setCurrentIndex(0) 
-
-        
-        
-
-        # En: contabilidad_widget.py
-    # En: SELECTA_SCAM/modulos/contabilidad/contabilidad_widget.py
+        self.proceso_input.setCurrentIndex(0)
 
     def editar_contabilidad(self):
-        # 1. Obtener la selección (esto se queda igual)
         selection_model = self.table_view.selectionModel()
         if not selection_model.hasSelection():
             QMessageBox.warning(self, "Editar Registro", "Por favor, seleccione un registro para editar.")
             return
-
         selected_rows = selection_model.selectedRows()
         if len(selected_rows) != 1:
             QMessageBox.warning(self, "Editar Registro", "Por favor, seleccione una sola fila para editar.")
             return
-        
         row = selected_rows[0].row()
         record_id = self.contabilidad_table_model.get_record_id(row)
-        if record_id is None: return
-
-        # 2. Abrir el diálogo (esto se queda igual)
+        if record_id is None:
+            return
         datos_para_editar = self.controller.contabilidad_logic.get_contabilidad_record_raw(record_id)
-        if not datos_para_editar: return
-
+        if not datos_para_editar:
+            return
         clientes_data = self.controller.get_all_clientes_sync()
         procesos_data = self.controller.get_all_procesos_sync()
         tipos_data = self.controller.get_tipos_contables_sync()
-
         dialog = ContabilidadEditorDialog(
             contabilidad_data=datos_para_editar,
             clientes_data=clientes_data,
@@ -758,16 +676,10 @@ class ContabilidadWidget(QWidget):
             clientes_logic=self.clientes_logic,
             parent=self
         )
-        
-        # 3. Si el usuario guarda los cambios...
         if dialog.exec() == QDialog.Accepted:
             nuevos_valores = dialog.get_values()
             if nuevos_valores:
-                
-                # --- INICIO DE LA SOLUCIÓN DIRECTA ---
-                # 4. Llamamos directamente al MODELO para actualizar la DB
                 try:
-                    # Usamos el modelo que ya tiene el controlador para la consistencia
                     self.controller.model.update_contabilidad_record(
                         record_id=record_id,
                         cliente_id=nuevos_valores.get('cliente_id'),
@@ -777,49 +689,31 @@ class ContabilidadWidget(QWidget):
                         valor=nuevos_valores.get('valor'),
                         fecha=nuevos_valores.get('fecha')
                     )
-                    self.logger.info(f"Actualización directa del registro ID {record_id} exitosa.")
-
-                    # 5. Forzamos la actualización de la vista INMEDIATAMENTE DESPUÉS
                     self.update_contabilidad_display()
-
                 except Exception as e:
-                    self.logger.error(f"Error en la actualización directa: {e}", exc_info=True)
                     QMessageBox.critical(self, "Error", f"No se pudo actualizar el registro: {e}")
-            # En: SELECTA_SCAM/modulos/contabilidad/contabilidad_widget.py
 
     def eliminar_contabilidad(self):
-        """
-        Elimina el registro de contabilidad actualmente seleccionado en la tabla.
-        """
-        # 1. Verificar que haya una fila seleccionada
         selection_model = self.table_view.selectionModel()
         if not selection_model.hasSelection():
             QMessageBox.warning(self, "Eliminar Registro", "Por favor, seleccione un registro para eliminar.")
             return
-
         selected_rows = selection_model.selectedRows()
         if not selected_rows:
-            return # Salir si por alguna razón no hay filas aunque haya selección
-
+            return
         row = selected_rows[0].row()
         record_id = self.contabilidad_table_model.get_record_id(row)
         if record_id is None:
             QMessageBox.critical(self, "Error", "No se pudo obtener el ID del registro seleccionado.")
             return
-
-        # 2. Obtener datos para el mensaje de confirmación
         cliente_nombre = self.contabilidad_table_model.data(self.contabilidad_table_model.index(row, 1))
         descripcion = self.contabilidad_table_model.data(self.contabilidad_table_model.index(row, 4))
-
-        # 3. Pedir confirmación al usuario
-        confirm = QMessageBox.question(self, "Confirmar Eliminación",
-                                    f"¿Está seguro de que desea eliminar el registro?\n\nID: {record_id}\nCliente: {cliente_nombre}\nDescripción: {descripcion}",
-                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        
-        # 4. Si el usuario confirma, llamar al controlador
+        confirm = QMessageBox.question(
+            self, "Confirmar Eliminación",
+            f"¿Está seguro de que desea eliminar el registro?\n\nID: {record_id}\nCliente: {cliente_nombre}\nDescripción: {descripcion}",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        )
         if confirm == QMessageBox.Yes:
-            # La señal 'operation_successful' conectada a 'on_operation_successful'
-            # se encargará de refrescar la tabla automáticamente.
             self.controller.delete_record(record_id)
 
 
