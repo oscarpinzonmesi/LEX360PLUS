@@ -145,61 +145,50 @@ class ContabilidadTableModel(QAbstractTableModel):
             self._data = []
             self.layoutChanged.emit()
 
-
 class ContabilidadWidget(QWidget):
     def __init__(self, controller: ContabilidadController, clientes_logic: ClientesLogic, procesos_logic: ProcesosLogic, user_data: dict = None, parent=None):
-        print(f"DEBUG_INIT: ContabilidadWidget __init__ llamado. Tipo de controller: {type(controller)}, user_data: {user_data}, Tipo de parent: {type(parent)}")
-
         super().__init__(parent)
 
         self.controller = controller
         self.user_data = user_data if user_data is not None else {}
-        #main_font = QFont()
-        #main_font.setPointSize(18) # Ajusta el tamaño de la fuente general
-        #self.setFont(main_font)
         self.clientes_logic = clientes_logic
         self.procesos_logic = procesos_logic
         self.cliente_filter_combo = QComboBox()
         self.setWindowTitle("Contabilidad")
         self.setMinimumSize(1000, 600)
-        
-        # --- CORRECCIÓN IMPORTANTE ---
-        # El modelo de la tabla debe crearse antes de intentar conectar una señal a él.
+
         self.contabilidad_table_model = ContabilidadTableModel(self.controller)
-        
-        # Ahora que el modelo existe, podemos conectar la señal del controlador a su método.
-        # Además, se corrige el nombre del atributo de 'table_model' a 'contabilidad_table_model'.
         self.controller.data_updated.connect(self.contabilidad_table_model.set_data)
 
-        self.logger = logging.getLogger(__name__)
         self.selected_cliente_id = None
         self.is_search_mode_active = False
         self.cliente_input = QComboBox()
-        self.proceso_input = QComboBox() 
-        self.proceso_input.addItem("Todos los Procesos", None) 
+        self.proceso_input = QComboBox()
+        self.proceso_input.addItem("Todos los Procesos", None)
         self.proceso_input.currentIndexChanged.connect(self.on_proceso_filter_changed)
-        self.proceso_input.setEnabled(False) 
-        
-        # Nuevo QComboBox para el tipo de contabilidad
+        self.proceso_input.setEnabled(False)
+
         self.tipo_input = QComboBox()
-        
+
         self.controller.clientes_loaded.connect(self.update_cliente_combo)
         self.controller.procesos_loaded_for_client.connect(self.update_proceso_combo)
-        self.controller.tipos_contables_loaded.connect(self.update_tipo_combo) # Conectar la nueva señal
+        self.controller.tipos_contables_loaded.connect(self.update_tipo_combo)
         self.controller.operation_successful.connect(self.on_operation_successful)
         self.controller.operation_failed.connect(lambda msg: QMessageBox.critical(None, "Error de Operación", msg))
         self.controller.summary_data_loaded.connect(self.update_summary_display)
         self.controller.record_updated.connect(self.reselect_row_by_id)
-
         self.controller.procesos_loaded_for_dialog.connect(self.handle_procesos_for_dialog)
-        self.init_ui() # Llama a init_ui para construir el resto de la interfaz
+
+        self.init_ui()
         self.controller.get_all_clientes_sync()
         self.controller.get_tipos_contables_sync()
-        self.update_contabilidad_display() 
+        self.update_contabilidad_display()
         self.check_user_permissions()
-        self.search_timer = QTimer(self) 
-        self.search_timer.setSingleShot(True) 
-        self.search_timer.timeout.connect(self.perform_search) 
+
+        self.search_timer = QTimer(self)
+        self.search_timer.setSingleShot(True)
+        self.search_timer.timeout.connect(self.perform_search)
+
         self.connect_signals()
 
     def init_ui(self):
