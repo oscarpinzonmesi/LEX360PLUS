@@ -311,7 +311,16 @@ class ContabilidadWidget(QWidget):
         self.hide_tooltip_timer.timeout.connect(self.custom_tooltip_label.hide)
 
 
-    # -------- lógica (resumida y limpia) ----------
+    def on_proceso_filter_changed(self, index):
+        """
+        Maneja el cambio en el filtro de procesos.
+        """
+        cliente_id = self.cliente_filter_combo.currentData()
+        proceso_id = self.proceso_input.currentData()
+        self.update_contabilidad_display()
+
+
+
     def update_cliente_combo(self, clientes_data: list):
         self.cliente_filter_combo.clear()
         self.cliente_filter_combo.addItem("Seleccione...", None)
