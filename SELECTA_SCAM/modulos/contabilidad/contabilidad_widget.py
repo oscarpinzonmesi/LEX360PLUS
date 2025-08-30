@@ -303,12 +303,13 @@ class ContabilidadWidget(QWidget):
         self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table_view.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_view.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table_view.verticalHeader().setVisible(True)
-        self.table_view.verticalHeader().setDefaultAlignment(Qt.AlignCenter)
+        vh = self.table_view.verticalHeader()
+        vh.setVisible(True)  # mantenemos visible para que exista la columna
+        vh.setDefaultSectionSize(28)  # alto de fila uniforme
+        vh.setSectionResizeMode(QHeaderView.Fixed)
+        vh.setMinimumWidth(0)
+        vh.setMaximumWidth(0)  # 🔎 oculta visualmente los números
 
-        # 🔧 Opcional (para mejorar estética, no obligatorio)
-        self.table_view.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
-        self.table_view.verticalHeader().setDefaultSectionSize(20)  # alto de cada fila
         main_layout.addWidget(self.table_view)
 
         # 📌 Resumen
