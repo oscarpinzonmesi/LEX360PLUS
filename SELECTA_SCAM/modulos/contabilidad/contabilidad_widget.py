@@ -142,6 +142,15 @@ class ContabilidadTableModel(QAbstractTableModel):
             return self._data[row]
         return None
 
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                return self.HEADERS[section]
+            elif orientation == Qt.Vertical:
+                # 🔎 Mostrar número de fila (1, 2, 3, …)
+                return str(section + 1)
+        return QVariant()
+
 
 class ContabilidadWidget(QWidget):
     def __init__(
