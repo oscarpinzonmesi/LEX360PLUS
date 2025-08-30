@@ -185,12 +185,7 @@ class MainApp(QMainWindow):
             documentos_db=self.documentos_db_instance, 
             contabilidad_db=self.contabilidad_db_instance 
         ) 
-        # ContabilidadModel ya no se instancia aquí directamente, se instancia dentro del Controller.
-        #logger.info("Instancias de modelos de negocio (Clientes, Procesos) creadas.")
-
-        # Instancia del Controlador de Contabilidad (NUEVO)
-        # MODIFICADO: ContabilidadController ahora recibe las instancias de lógica directamente
-        # Instancia del Controlador de Contabilidad
+        
         self.contabilidad_controller_instance = ContabilidadController(
             model=self.contabilidad_model_instance,
             contabilidad_logic=self.contabilidad_logic_instance, # Aquí y en los siguientes, debes usar el nombre
