@@ -311,7 +311,7 @@ class ContabilidadWidget(QWidget):
         vh.setMaximumWidth(5)  # 🔎 oculta visualmente los números
 
         main_layout.addWidget(self.table_view)
-
+-
         # 📌 Resumen
         summary_group_box = QWidget()
         summary_group_box.setStyleSheet(
