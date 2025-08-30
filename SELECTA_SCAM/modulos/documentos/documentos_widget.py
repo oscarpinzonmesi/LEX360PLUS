@@ -1611,84 +1611,93 @@ class DocumentosModule(QWidget):
             self.logger.error(f"Error en vista - Ocurrió un error al restaurar: {e}", exc_info=True)
 
     def eliminar_documento_definitivamente_seleccionado(self):
-        # Ocultar tooltip al interactuar (estas líneas son buenas y las mantenemos)
-        if hasattr(self, 'custom_tooltip_label') and self.custom_tooltip_label is not None:
+        # Ocultar tooltip y limpiar estado de hover
+        try:
             self.custom_tooltip_label.hide()
-        if hasattr(self, 'hide_tooltip_timer') and self.hide_tooltip_timer.isActive():
-            self.hide_tooltip_timer.stop()
+            if self.hide_tooltip_timer.isActive():
+                self.hide_tooltip_timer.stop()
+        except Exception:
+            pass
         self._last_hovered_index = QModelIndex()
 
-        selected_indexes = self.tabla_documentos.selectionModel().selectedRows()
+        # --- Selección actual ---
+        sel_model = self.tabla_documentos.selectionModel()
+        selected_indexes = sel_model.selectedRows() if sel_model else []
+
+        # ⛔ Si NO hay selección:
+        #   - En PAPELERA: no mostramos ningún mensaje molesto; si además no hay filas, volvemos a activos.
+        #   - En ACTIVOS: dejamos el mensaje original.
         if not selected_indexes:
-            self.mostrar_advertencia("Eliminar Definitivamente", "Por favor, seleccione uno o más documentos para eliminar definitivamente.")
-            return
-        
-        # Recolectar información de los documentos seleccionados
-        documentos_a_eliminar_info = []
-        nombres_documentos = []
-        for index in selected_indexes:
-            row = index.row()
-            doc_id = self.documentos_model.get_documento_id(row) # Usar self.documentos_model
-            # Asegúrate de que doc_id sea un entero antes de agregarlo
-            if isinstance(doc_id, int):
-                doc_nombre = self.documentos_model.data(index.sibling(row, 2), Qt.DisplayRole) # Asumiendo columna 2 es el nombre
-                # doc_ruta_relativa no es necesaria para la llamada al controlador aquí, pero la mantendremos si la usas para otra cosa
-                # doc_ruta_relativa = self.documentos_model.get_documento_path(row) # Usar self.documentos_model
-                
-                if doc_id is not None: # doble chequeo aunque ya validamos el tipo
-                    documentos_a_eliminar_info.append({'id': doc_id, 'nombre': doc_nombre}) # No necesitamos ruta_relativa en esta info
-                    nombres_documentos.append(doc_nombre)
-                else:
-                    logger.warning(f"No se pudo obtener el ID del documento en la fila {row} para eliminar definitivamente.")
+            modelo = getattr(self, 'documentos_model', None) or getattr(self, 'tabla_documentos_model', None)
+            filas = (modelo.rowCount() if modelo else 0)
+
+            if self.mostrando_papelera:
+                # Sin selección en papelera: si ya no hay filas, ir a activos en silencio
+                if filas == 0:
+                    self.mostrar_documentos_activos()
+                # Si aún hay filas, simplemente no hagas nada (sin avisos)
+                return
             else:
-                logger.error(f"El ID del documento en la fila {row} no es un entero válido: {doc_id}. No se puede eliminar.")
-                self.mostrar_error("Error de Datos", f"El ID del documento seleccionado en la fila {row} es inválido.")
-                return # Detener la operación si hay un ID no válido.
-        
-        if not documentos_a_eliminar_info:
-            self.mostrar_advertencia("Error", "No se encontraron IDs de documentos válidos para eliminar.")
-            return
+                # Comportamiento original en activos
+                self.mostrar_advertencia("Eliminar Definitivamente",
+                                        "Por favor, seleccione uno o más documentos para eliminar definitivamente.")
+                return
 
-        nombres_str = ", ".join(nombres_documentos[:3]) # Mostrar los primeros 3, si hay más
-        if len(nombres_documentos) > 3:
-            nombres_str += ", ..."
+        # --- Confirmación (una sola para todos) ---
+        try:
+            # Armamos lista de IDs y nombres
+            ids = []
+            nombres = []
+            for index in selected_indexes:
+                row = index.row()
+                doc_id = self.documentos_model.get_documento_id(row)
+                ids.append(int(doc_id))
+                nombre_idx = index.sibling(row, 3)  # columna "Nombre Documento"
+                nombres.append(self.documentos_model.data(nombre_idx, Qt.DisplayRole) or f"ID {doc_id}")
 
-        resp = QMessageBox.question(self, "Confirmar Eliminación Definitiva",
-                                    f"¡ADVERTENCIA! Esta acción eliminará el/los documento(s) PERMANENTEMENTE de la base de datos y, si existe, del sistema de archivos.\n({nombres_str})\n¿Está seguro de que desea continuar?",
-                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        
-        if resp == QMessageBox.Yes:
-            all_success = True
-            failed_docs_list = []
+            nombres_str = ", ".join(nombres[:3]) + (", ..." if len(nombres) > 3 else "")
 
-            for doc_info in documentos_a_eliminar_info:
-                doc_id = doc_info['id']
-                doc_nombre = doc_info['nombre']
-                try:
-                    success, message = self.controller.eliminar_documento_definitivamente(doc_id)
-                    if success:
-                        logger.info(f"Documento '{doc_nombre}' (ID: {doc_id}) eliminado permanentemente. Mensaje: {message}")
-                    else:
-                        all_success = False
-                        failed_docs_list.append(f"'{doc_nombre}' (ID: {doc_id}) - Falló: {message}")
-                except Exception as e:
-                    all_success = False
-                    failed_docs_list.append(f"'{doc_nombre}' (ID: {doc_id}) - Error inesperado: {e}")
-                    logger.error(f"Error inesperado al eliminar definitivamente documento ID {doc_id}: {e}", exc_info=True)
+            resp = QMessageBox.question(
+                self,
+                "Confirmar Eliminación Definitiva",
+                f"¡ADVERTENCIA! Esta acción eliminará PERMANENTEMENTE:\n{nombres_str}\n\n¿Desea continuar?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            if resp != QMessageBox.Yes:
+                return
 
-            if all_success:
-                QMessageBox.information(self, "Éxito", "Documento(s) eliminado(s) permanentemente.")
+            # --- Eliminar en BD / disco ---
+            all_ok = True
+            fallidos = []
+            for doc_id in ids:
+                ok, msg = self.controller.eliminar_documento_definitivamente(doc_id)
+                if not ok:
+                    all_ok = False
+                    fallidos.append(f"ID {doc_id} - {msg}")
+
+            # --- Mensajes resumidos (sin “seleccione…” jamás) ---
+            if all_ok:
+                self.mostrar_informacion("Éxito", f"Se eliminaron {len(ids)} documento(s) de forma definitiva.")
             else:
-                if len(failed_docs_list) == len(documentos_a_eliminar_info):
-                    self.mostrar_error("Error Grave", "No se pudo eliminar ninguno de los documentos seleccionados permanentemente.")
+                if len(fallidos) == len(ids):
+                    self.mostrar_error("Error Grave", "No se pudo eliminar ninguno de los documentos seleccionados.")
                 else:
-                    self.mostrar_advertencia("Eliminación Parcial", 
-                                            f"Se eliminaron algunos documentos, pero hubo problemas con:\n- " + "\n- ".join(failed_docs_list))
+                    self.mostrar_advertencia("Eliminación Parcial", "Problemas con:\n- " + "\n- ".join(fallidos))
 
-            # 🔥 Ajuste clave:
-            # En lugar de volver a llamar búsqueda y provocar que el mensaje aparezca sin selección
-            self.tabla_documentos.clearSelection()   # Limpia la selección
-            self.ejecutar_busqueda()                 # Refresca la tabla sin provocar advertencias
+        finally:
+            # Limpiar selección y refrescar
+            try:
+                self.tabla_documentos.clearSelection()
+            except Exception:
+                pass
+
+            self.ejecutar_busqueda()
+
+            # Si estamos en PAPELERA y ya no quedan filas, volver automáticamente a activos (sin mensajes)
+            modelo = getattr(self, 'documentos_model', None) or getattr(self, 'tabla_documentos_model', None)
+            if self.mostrando_papelera and modelo and modelo.rowCount() == 0:
+                self.mostrar_documentos_activos()
 
 
     def ejecutar_busqueda(self):
