@@ -1884,6 +1884,18 @@ class DocumentosModule(QWidget):
             self.limpiar_filtros_busqueda()
         self.ejecutar_busqueda()
 
+    def _set_enviar_papelera_visible(self, visible: bool):
+        for name in (
+            "btn_enviar_papelera",
+            "btn_enviar_a_papelera",
+            "btnEnviarPapelera",
+            "enviar_papelera_btn",
+        ):
+            btn = getattr(self, name, None)
+            if btn is not None:
+                btn.setVisible(visible)
+
+
 
     def on_btn_restaurar_clicked(self):
         try:
