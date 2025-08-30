@@ -303,7 +303,12 @@ class ContabilidadWidget(QWidget):
         self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table_view.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_view.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table_view.verticalHeader().setVisible(False)
+        self.table_view.verticalHeader().setVisible(True)
+        self.table_view.verticalHeader().setDefaultAlignment(Qt.AlignCenter)
+
+        # 🔧 Opcional (para mejorar estética, no obligatorio)
+        self.table_view.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
+        self.table_view.verticalHeader().setDefaultSectionSize(28)  # alto de cada fila
         main_layout.addWidget(self.table_view)
 
         # 📌 Resumen
