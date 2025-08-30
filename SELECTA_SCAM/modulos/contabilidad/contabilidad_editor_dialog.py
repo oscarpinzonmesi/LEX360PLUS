@@ -292,4 +292,4 @@ class ContabilidadEditorDialog(QDialog):
         self.cliente_input.setCurrentIndex(index)
         self.cliente_input.blockSignals(False)
         self.toggle_cliente_search_mode(False)
-                self.cliente_selected.emit(cliente_id)
+        self.cliente_selected.emit(cliente_id)
