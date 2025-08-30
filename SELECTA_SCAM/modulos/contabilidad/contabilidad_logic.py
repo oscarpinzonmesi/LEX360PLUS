@@ -116,55 +116,56 @@ class ContabilidadLogic:
                 for r in results
             ]
 
-    def get_contabilidad_data_for_display(
-        self,
-        cliente_id: int = None,
-        proceso_id: int = None,
-        search_term: str = None,
-        tipo_id: int = None,
-    ) -> List[Tuple]:
-        """
-        Retorna datos para mostrar en la UI, con filtros extra.
-        """
-        with self.db_manager() as session:
-            query = (
-                session.query(
-                    Contabilidad.id,
-                    Cliente.nombre,
-                    Proceso.radicado,
-                    TipoContable.nombre,
-                    Contabilidad.descripcion,
-                    Contabilidad.monto,
-                    Contabilidad.fecha,
-                )
-                .join(Cliente, Contabilidad.cliente_id == Cliente.id)
-                .outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id)
-                .join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
+
+def get_contabilidad_data_for_display(
+    self,
+    cliente_id: int = None,
+    proceso_id: int = None,
+    search_term: str = None,
+    tipo_contable_id: int = None,  # 🔄 cambio aquí
+) -> List[Tuple]:
+    """
+    Retorna datos para mostrar en la UI, con filtros extra.
+    """
+    with self.db_manager() as session:
+        query = (
+            session.query(
+                Contabilidad.id,
+                Cliente.nombre,
+                Proceso.radicado,
+                TipoContable.nombre,
+                Contabilidad.descripcion,
+                Contabilidad.monto,
+                Contabilidad.fecha,
             )
+            .join(Cliente, Contabilidad.cliente_id == Cliente.id)
+            .outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id)
+            .join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
+        )
 
-            if cliente_id:
-                query = query.filter(Contabilidad.cliente_id == cliente_id)
-            if proceso_id:
-                query = query.filter(Contabilidad.proceso_id == proceso_id)
-            if tipo_id:
-                query = query.filter(Contabilidad.tipo_contable_id == tipo_contable_id)
+        if cliente_id:
+            query = query.filter(Contabilidad.cliente_id == cliente_id)
+        if proceso_id:
+            query = query.filter(Contabilidad.proceso_id == proceso_id)
+        if tipo_contable_id:  # 🔄 cambio aquí
+            query = query.filter(Contabilidad.tipo_contable_id == tipo_contable_id)
 
-            if search_term:
-                query = query.filter(Contabilidad.descripcion.ilike(f"%{search_term}%"))
+        if search_term:
+            query = query.filter(Contabilidad.descripcion.ilike(f"%{search_term}%"))
 
-            results = query.all()
-            return [
-                (
-                    r[0],
-                    r[1],
-                    r[2] or "",
-                    r[3],
-                    r[4],
-                    float(r[5]),
-                    r[6].strftime("%Y-%m-%d"),
-                )
-                for r in results
-            ]
+        results = query.all()
+        return [
+            (
+                r[0],
+                r[1],
+                r[2] or "",
+                r[3],
+                r[4],
+                float(r[5]),
+                r[6].strftime("%Y-%m-%d"),
+            )
+            for r in results
+        ]
 
     def get_summary_data(
         self, cliente_id=None, proceso_id=None, search_term=None, tipo_id=None
