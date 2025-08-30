@@ -1472,72 +1472,24 @@ class DocumentosModule(QWidget):
     
     
     def toggle_papelera_view(self):
+        """
+        Cambia entre vista de Activos y Papelera.
+        IMPORTANTE: el flag se cambia ANTES y la limpieza no debe sobreescribirlo.
+        """
+        # Cambiamos el modo primero
         self.mostrando_papelera = not self.mostrando_papelera
-        if hasattr(self, 'custom_tooltip_label') and self.custom_tooltip_label is not None:
-            self.custom_tooltip_label.hide()
-        if hasattr(self, 'hide_tooltip_timer') and self.hide_tooltip_timer.isActive():
-            self.hide_tooltip_timer.stop()
-        self._last_hovered_index = QModelIndex()
+        logger.info(f"Modo papelera (tras toggle): {self.mostrando_papelera}")
 
-        self.mostrando_papelera = not self.mostrando_papelera
-        #self.documentos_model.set_mostrando_papelera(self.mostrando_papelera) # ASEGÚRATE que tu modelo tiene este método y se llama 'documentos_model'
+        # Limpiar filtros SIN tocar el modo
+        try:
+            self.limpiar_filtros_busqueda(keep_mode=True)
+        except TypeError:
+            # Si la versión anterior no acepta el parámetro, llamamos sin él (backward compatible)
+            self.limpiar_filtros_busqueda()
 
-        if self.mostrando_papelera:
-            self.btn_papelera.setText("Volver a Documentos Activos")
-            self.label.setText("Gestión de Documentos - Papelera") # Título principal de la ventana
-            
-            # Oculta los botones de acción normales y campos de entrada de carga
-            self.btn_eliminar_seleccion.setVisible(False) # "Enviar a Papelera"
-            self.btn_editar_seleccion.setVisible(False) # "Editar Selección"
-            self.btn_ver_documento.setVisible(False) # "Ver Documento Seleccionado"
-            
-            self.main_load_docs_label.setVisible(False)
-            self.cliente_combo.setVisible(False)
-            self.nom_doc_label.setVisible(False)
-            self.nombre_doc_input.setVisible(False)
-            self.tipo_doc_label.setVisible(False)
-            self.tipo_documento_combo.setVisible(False)
-            self.btn_seleccionar_archivo.setVisible(False)
-            self.btn_agregar.setVisible(False)
-            
-            # Oculta campos de edición si están visibles
-            self.cancelar_edicion() # Llama a cancelar edición para asegurar que los campos de edición se oculten
-            
-            # Muestra los botones de papelera
-            self.btn_restaurar.setVisible(True)
-            self.btn_eliminar_definitivo.setVisible(True)
+        # Refrescar con el modo ya establecido
+        self.ejecutar_busqueda()
 
-        else:
-            self.btn_papelera.setText("Ver Papelera")
-            self.label.setText("Gestión de Documentos") # Título principal de la ventana
-            
-            # Muestra los botones de acción normales y campos de entrada de carga
-            self.btn_eliminar_seleccion.setVisible(True)
-            self.btn_editar_seleccion.setVisible(True)
-            self.btn_ver_documento.setVisible(False)
-
-
-            self.main_load_docs_label.setVisible(True)
-            self.cliente_combo.setVisible(True)
-            self.nom_doc_label.setVisible(True)
-            self.nombre_doc_input.setVisible(True)
-            self.tipo_doc_label.setVisible(True)
-            self.tipo_documento_combo.setVisible(True)
-            self.btn_seleccionar_archivo.setVisible(True)
-            self.btn_agregar.setVisible(True)
-
-            # Oculta los botones de papelera
-            self.btn_restaurar.setVisible(False)
-            self.btn_eliminar_definitivo.setVisible(False)
-
-        self.limpiar_filtros_busqueda() # Limpiar filtros al cambiar de vista
-        self.ejecutar_busqueda() # Centralizamos la carga de datos aquí
-        self.update_action_buttons_state() # Asegura que los botones se activen/desactiven correctamente
-        logger.info(f"Modo papelera: {self.mostrando_papelera}")
-
-        if self.tabla_documentos.selectionModel():
-            self.tabla_documentos.selectionModel().clearSelection()
-        self.update_action_buttons_state()
 
 
     def update_action_buttons_state(self):
