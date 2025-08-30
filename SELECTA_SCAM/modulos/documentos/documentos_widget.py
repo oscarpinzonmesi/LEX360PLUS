@@ -1593,57 +1593,86 @@ class DocumentosModule(QWidget):
             self.mostrar_mensaje("Papelera Vacía", "No hay documentos en la papelera.")
 
     def restaurar_documento_seleccionado(self):
-        """
-        Restaura los documentos seleccionados desde la papelera.
-        Si después de restaurar no queda ningún documento en la papelera,
-        cambia automáticamente a la vista de documentos activos.
-        """
-        try:
-            selected_indexes = self.tabla_documentos.selectionModel().selectedRows()
-            if not selected_indexes:
-                self.mostrar_advertencia("Ninguna selección", "Por favor, seleccione uno o más documentos para restaurar.")
+        # Ocultar tooltip y limpiar último hover
+        if hasattr(self, 'custom_tooltip_label') and self.custom_tooltip_label is not None:
+            self.custom_tooltip_label.hide()
+        if hasattr(self, 'hide_tooltip_timer') and self.hide_tooltip_timer.isActive():
+            self.hide_tooltip_timer.stop()
+        self._last_hovered_index = QModelIndex()
+
+        # Selección
+        sel_model = self.tabla_documentos.selectionModel()
+        selected_indexes = sel_model.selectedRows() if sel_model else []
+
+        # Si NO hay selección:
+        #   - En PAPELERA: no mostrar diálogos; si no hay filas, volver a Activos.
+        #   - En ACTIVOS: advertencia normal.
+        if not selected_indexes:
+            modelo = getattr(self, 'documentos_model', None) or getattr(self, 'tabla_documentos_model', None)
+            filas = (modelo.rowCount() if modelo else 0)
+            if self.mostrando_papelera:
+                if filas == 0:
+                    self.mostrar_documentos_activos()
                 return
-
-            # Recolectar IDs de documentos
-            doc_ids = []
-            for index in selected_indexes:
-                doc_id = self.documentos_model.get_documento_id(index.row())
-                if doc_id is not None:
-                    doc_ids.append(doc_id)
-
-            if not doc_ids:
-                self.mostrar_advertencia("Error", "No se encontraron IDs de documentos válidos para restaurar.")
-                return
-
-            # Restaurar en el controlador
-            self.controller.recuperar_de_papelera(doc_ids)
-            success = True
-
-
-            if success:
-                QMessageBox.information(self, "Éxito", f"Se restauraron {len(doc_ids)} documento(s).")
-                self.ejecutar_busqueda()
-                # Forzar selección del primer documento y actualizar botones
-                if self.documentos_model.rowCount() > 0:
-                    index = self.documentos_model.index(0, 0)
-                    self.tabla_documentos.selectRow(0)
-                    self.on_table_selection_changed()  # fuerza la actualización de botones
-
-
-                # ✅ Si la papelera quedó vacía
-                if self.mostrando_papelera and self.documentos_model.rowCount() == 0:
-                    self.logger.info("Papelera vacía tras restaurar. Volviendo a documentos activos...")
-                    self.toggle_papelera_view()
-                    self._cambiando_vista_auto = True
-                    self.toggle_papelera_view()
-                    self._cambiando_vista_auto = False
-
             else:
-                self.mostrar_error("Error", "No se pudieron restaurar todos los documentos seleccionados.")
+                self.mostrar_advertencia("Restaurar", "Por favor, seleccione uno o más documentos para restaurar.")
+                return
 
-        except Exception as e:
-            self.mostrar_error("Error en vista", f"Ocurrió un error al restaurar: {e}")
-            self.logger.error(f"Error en vista - Ocurrió un error al restaurar: {e}", exc_info=True)
+        # IDs a restaurar
+        model_ref = getattr(self, 'documentos_model', None) or getattr(self, 'tabla_documentos_model', None)
+        doc_ids = []
+        for idx in selected_indexes:
+            try:
+                doc_id = model_ref.get_documento_id(idx.row())
+                if isinstance(doc_id, int):
+                    doc_ids.append(doc_id)
+            except Exception:
+                continue
+
+        if not doc_ids:
+            if self.mostrando_papelera:
+                # Sin IDs válidos en papelera: regresar si corresponde
+                modelo = model_ref
+                if modelo and modelo.rowCount() == 0:
+                    self.mostrar_documentos_activos()
+                return
+            else:
+                self.mostrar_advertencia("Restaurar", "No se detectaron documentos válidos para restaurar.")
+                return
+
+        # Restaurar (acepta ambos estilos de controlador)
+        all_ok = True
+        try:
+            if hasattr(self.controller, 'restaurar_documentos'):
+                ok = self.controller.restaurar_documentos(doc_ids)
+                all_ok = bool(ok)
+            else:
+                for did in doc_ids:
+                    ok = False
+                    if hasattr(self.controller, 'restaurar_documento'):
+                        ok = bool(self.controller.restaurar_documento(did))
+                    elif hasattr(self.controller, 'restaurar_documento_desde_papelera'):
+                        ok = bool(self.controller.restaurar_documento_desde_papelera(did))
+                    all_ok = all_ok and ok
+        finally:
+            # Siempre limpiar selección y refrescar
+            try:
+                self.tabla_documentos.clearSelection()
+            except Exception:
+                pass
+
+            self.ejecutar_busqueda()
+
+            # Si estamos en PAPELERA y ya no quedan filas → regresar automáticamente a Activos
+            modelo = getattr(self, 'documentos_model', None) or getattr(self, 'tabla_documentos_model', None)
+            if self.mostrando_papelera and modelo and modelo.rowCount() == 0:
+                self.mostrar_documentos_activos()
+
+        # Mensaje no modal (evita diálogos molestos)
+        if all_ok:
+            self.mostrar_informacion_en_vista("Éxito", f"Se restauró {len(doc_ids)} documento(s).")
+        else:
+            self.mostrar_advertencia("Restauración Parcial", "Algunos documentos no pudieron restaurarse.")
 
     def eliminar_documento_definitivamente_seleccionado(self):
         # Ocultar tooltip y limpiar estado de hover
