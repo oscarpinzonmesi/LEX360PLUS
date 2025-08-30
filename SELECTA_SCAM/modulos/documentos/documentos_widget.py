@@ -1642,6 +1642,14 @@ class DocumentosModule(QWidget):
             self.mostrar_error("Error en vista", f"Ocurrió un error al restaurar: {e}")
             self.logger.error(f"Error en vista - Ocurrió un error al restaurar: {e}", exc_info=True)
 
+    def _volver_a_activos_si_papelera_vacia(self):
+        modelo = getattr(self, 'documentos_model', None) or getattr(self, 'tabla_documentos_model', None)
+        filas = (modelo.rowCount() if modelo else 0)
+        if self.mostrando_papelera and filas == 0:
+            self.mostrar_documentos_activos()
+
+
+
     def eliminar_documento_definitivamente_seleccionado(self):
         # Ocultar tooltip y limpiar estado de hover
         try:
