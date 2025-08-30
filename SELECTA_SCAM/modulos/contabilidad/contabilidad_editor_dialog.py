@@ -24,7 +24,7 @@ class ContabilidadEditorDialog(QDialog):
         self.clientes_logic = clientes_logic
         self.parent_widget = parent
         self.setWindowTitle("Editar Registro de Contabilidad" if contabilidad_data else "Agregar Registro de Contabilidad")
-        self.setMinimumSize(700, 500)
+        self.setMinimumSize(1000, 700)
         self.init_ui()
         self.load_data_into_form()
         self.setFont(self.input_font)
