@@ -307,7 +307,7 @@ class ContabilidadWidget(QWidget):
         vh.setVisible(True)  # mantenemos visible para que exista la columna
         vh.setDefaultSectionSize(28)  # alto de fila uniforme
         vh.setSectionResizeMode(QHeaderView.Fixed)
-        vh.setMinimumWidth(5)
+        vh.setMinimumWidth(30)
         vh.setMaximumWidth(5)  # 🔎 oculta visualmente los números
 
         main_layout.addWidget(self.table_view)
