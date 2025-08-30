@@ -1655,28 +1655,24 @@ class DocumentosModule(QWidget):
             pass
         self._last_hovered_index = QModelIndex()
 
-        # --- Selección actual ---
         sel_model = self.tabla_documentos.selectionModel()
         selected_indexes = sel_model.selectedRows() if sel_model else []
 
         # ⛔ Si NO hay selección:
-        #   - En PAPELERA: no mostramos ningún mensaje molesto; si además no hay filas, volvemos a activos.
-        #   - En ACTIVOS: dejamos el mensaje original.
+        #   - En PAPELERA: no mostramos mensajes; si no hay filas, volver a activos.
+        #   - En ACTIVOS: dejar advertencia normal.
         if not selected_indexes:
             modelo = getattr(self, 'documentos_model', None) or getattr(self, 'tabla_documentos_model', None)
             filas = (modelo.rowCount() if modelo else 0)
-
             if self.mostrando_papelera:
-                # Sin selección en papelera: si ya no hay filas, ir a activos en silencio
                 if filas == 0:
                     self.mostrar_documentos_activos()
-                # Si aún hay filas, simplemente no hagas nada (sin avisos)
                 return
             else:
-                # Comportamiento original en activos
                 self.mostrar_advertencia("Eliminar Definitivamente",
                                         "Por favor, seleccione uno o más documentos para eliminar definitivamente.")
                 return
+
 
         # --- Confirmación (una sola para todos) ---
         try:
