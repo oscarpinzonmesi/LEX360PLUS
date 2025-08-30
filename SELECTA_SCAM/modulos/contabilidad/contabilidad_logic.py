@@ -159,16 +159,16 @@ class ContabilidadLogic:
         """
         with self.db_manager() as session:
             query = session.query(
-            Contabilidad.id,
-            Cliente.nombre,
-            Proceso.radicado,
-            TipoContable.nombre,
-            Contabilidad.descripcion,
-            Contabilidad.monto,
-            Contabilidad.fecha
-        ).join(Cliente, Contabilidad.cliente_id == Cliente.id
-        ).outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id
-        ).join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
+                Contabilidad.id,
+                Cliente.nombre,
+                Proceso.radicado,
+                TipoContable.nombre,
+                Contabilidad.descripcion,
+                Contabilidad.monto,
+                Contabilidad.fecha
+            ).join(Cliente, Contabilidad.cliente_id == Cliente.id
+            ).outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id
+            ).join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
 
 
             if not rec:
