@@ -178,23 +178,7 @@ class MainApp(QMainWindow):
         )
 
         # --- FIN DE LA CORRECCIÓN DE ARQUITECTURA ---
-
-        self.procesos_model_instance = ProcesosModel(
-            self.procesos_db_instance, 
-            clientes_db=self.clientes_db_instance, 
-            documentos_db=self.documentos_db_instance, 
-            contabilidad_db=self.contabilidad_db_instance 
-        ) 
         
-        self.contabilidad_controller_instance = ContabilidadController(
-            model=self.contabilidad_model_instance,
-            contabilidad_logic=self.contabilidad_logic_instance, # Aquí y en los siguientes, debes usar el nombre
-            clientes_logic=self.clientes_logic_instance,
-            procesos_logic=self.procesos_logic_instance,
-            #parent=self # Pasa el padre si es necesario para señales/slots
-        )
-        #logger.info("Instancia de ContabilidadController creada.")
-    
         sidebar = QWidget()
         sidebar.setFixedWidth(220)
         side_layout = QVBoxLayout(sidebar)
