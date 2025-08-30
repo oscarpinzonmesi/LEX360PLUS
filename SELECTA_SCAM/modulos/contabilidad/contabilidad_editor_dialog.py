@@ -76,7 +76,7 @@ class ContabilidadEditorDialog(QDialog):
         self.cliente_search_results_list = QListWidget()
         self.cliente_search_results_list.setObjectName("dialogoInput")
         self.cliente_search_results_list.setObjectName("cliente_search_results_list")
-        self.cliente_search_results_list.setMaximumHeight(400)
+        self.cliente_search_results_list.setMaximumHeight(300)
         self.cliente_search_results_list.setFont(self.input_font)
         self.cliente_search_results_list.setSizePolicy(
             self.cliente_search_results_list.sizePolicy().Expanding,
@@ -292,4 +292,4 @@ class ContabilidadEditorDialog(QDialog):
         self.cliente_input.setCurrentIndex(index)
         self.cliente_input.blockSignals(False)
         self.toggle_cliente_search_mode(False)
-        self.cliente_selected.emit(cliente_id)
+                self.cliente_selected.emit(cliente_id)
