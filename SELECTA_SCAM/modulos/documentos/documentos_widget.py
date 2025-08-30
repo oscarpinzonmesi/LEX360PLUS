@@ -1727,6 +1727,10 @@ class DocumentosModule(QWidget):
 
         logger.info(
             f"FILTROS FINALES enviados al controlador (unificado): "
+            # ⛔ Evitar búsquedas desfasadas si el modo cambió (ej. acabamos de salir de papelera)
+            if filtros.get('mostrando_papelera', self.mostrando_papelera) != self.mostrando_papelera:
+                return
+
             f"cliente_id_exacto={final_cliente_id_filter}, "
             f"cliente_nombre_filtro_texto='{final_cliente_nombre_filter}', "
             f"documento_id_filtro={final_documento_id_filter}, "
