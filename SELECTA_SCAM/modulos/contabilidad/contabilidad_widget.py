@@ -1,15 +1,37 @@
 from PyQt5.QtWidgets import (
-    QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout,
-    QMessageBox, QHeaderView, QComboBox, QFileDialog, QTableView,
-    QAbstractItemView, QFormLayout, QDialog
+    QWidget,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QHBoxLayout,
+    QMessageBox,
+    QHeaderView,
+    QComboBox,
+    QFileDialog,
+    QTableView,
+    QAbstractItemView,
+    QFormLayout,
+    QDialog,
 )
-from PyQt5.QtCore import Qt, QAbstractTableModel, QVariant, pyqtSignal, QModelIndex, QTimer
+from PyQt5.QtCore import (
+    Qt,
+    QAbstractTableModel,
+    QVariant,
+    pyqtSignal,
+    QModelIndex,
+    QTimer,
+)
 from PyQt5.QtGui import QColor
 from datetime import datetime
 import os
 
-from SELECTA_SCAM.modulos.contabilidad.contabilidad_controller import ContabilidadController
-from SELECTA_SCAM.modulos.contabilidad.contabilidad_editor_dialog import ContabilidadEditorDialog
+from SELECTA_SCAM.modulos.contabilidad.contabilidad_controller import (
+    ContabilidadController,
+)
+from SELECTA_SCAM.modulos.contabilidad.contabilidad_editor_dialog import (
+    ContabilidadEditorDialog,
+)
 from SELECTA_SCAM.modulos.clientes.clientes_logic import ClientesLogic
 from SELECTA_SCAM.modulos.procesos.procesos_logic import ProcesosLogic
 
@@ -42,7 +64,15 @@ class FormatoReporteDialog(QDialog):
 
 class ContabilidadTableModel(QAbstractTableModel):
     HEADERS = ["ID", "Cliente", "Proceso", "Tipo", "Descripción", "Valor", "Fecha"]
-    COLUMN_MAP = {"ID": 0, "Cliente": 1, "Proceso": 2, "Tipo": 3, "Descripción": 4, "Valor": 5, "Fecha": 6}
+    COLUMN_MAP = {
+        "ID": 0,
+        "Cliente": 1,
+        "Proceso": 2,
+        "Tipo": 3,
+        "Descripción": 4,
+        "Valor": 5,
+        "Fecha": 6,
+    }
 
     def __init__(self, controller, parent=None):
         super().__init__(parent)
@@ -114,8 +144,14 @@ class ContabilidadTableModel(QAbstractTableModel):
 
 
 class ContabilidadWidget(QWidget):
-    def __init__(self, controller: ContabilidadController, clientes_logic: ClientesLogic,
-                 procesos_logic: ProcesosLogic, user_data: dict = None, parent=None):
+    def __init__(
+        self,
+        controller: ContabilidadController,
+        clientes_logic: ClientesLogic,
+        procesos_logic: ProcesosLogic,
+        user_data: dict = None,
+        parent=None,
+    ):
         super().__init__(parent)
         self.controller = controller
         self.user_data = user_data if user_data is not None else {}
@@ -141,10 +177,14 @@ class ContabilidadWidget(QWidget):
         self.controller.procesos_loaded_for_client.connect(self.update_proceso_combo)
         self.controller.tipos_contables_loaded.connect(self.update_tipo_combo)
         self.controller.operation_successful.connect(self.on_operation_successful)
-        self.controller.operation_failed.connect(lambda msg: QMessageBox.critical(self, "Error", msg))
+        self.controller.operation_failed.connect(
+            lambda msg: QMessageBox.critical(self, "Error", msg)
+        )
         self.controller.summary_data_loaded.connect(self.update_summary_display)
         self.controller.record_updated.connect(self.reselect_row_by_id)
-        self.controller.procesos_loaded_for_dialog.connect(self.handle_procesos_for_dialog)
+        self.controller.procesos_loaded_for_dialog.connect(
+            self.handle_procesos_for_dialog
+        )
 
         self.init_ui()
         self.controller.get_all_clientes_sync()
@@ -159,7 +199,8 @@ class ContabilidadWidget(QWidget):
 
     def init_ui(self):
         # 🎨 Estilos visuales
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QWidget { background-color: #F8F0F5; color: #333333; font-family: 'Segoe UI', 'Arial', sans-serif; }
             QLabel#mainTitle { color: #D36B92; font-size: 28px; font-weight: bold; padding-bottom: 15px; border-bottom: 1px solid #E0E0E0; margin-bottom: 20px; padding-top: 10px; }
             QTableView#tablaContabilidad { font-family: 'Segoe UI'; font-size: 24px; background-color: white; border: 1px solid #E0E0E0; gridline-color: #F0F0F0; border-radius: 8px; selection-background-color: #D36B92; selection-color: white; }
@@ -189,7 +230,8 @@ class ContabilidadWidget(QWidget):
             QLineEdit::placeholder { color: #ADB5BD; }
             QComboBox QAbstractItemView { border: 1px solid #D36B92; background-color: white; selection-background-color: #FDF7FA; selection-color: #333333; }
             QLabel { color: #5D566F; font-size: 16px; font-weight: bold; padding-right: 5px; }
-        """)
+        """
+        )
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(30, 30, 30, 30)
@@ -214,7 +256,9 @@ class ContabilidadWidget(QWidget):
         top_layout.addWidget(self.cliente_search_label)
 
         self.cliente_search_input = QLineEdit(self)
-        self.cliente_search_input.setPlaceholderText("Buscar cliente por nombre o ID...")
+        self.cliente_search_input.setPlaceholderText(
+            "Buscar cliente por nombre o ID..."
+        )
         self.cliente_search_input.hide()
         top_layout.addWidget(self.cliente_search_input)
 
@@ -235,7 +279,9 @@ class ContabilidadWidget(QWidget):
 
         top_layout.addStretch()
         self.btn_agregar = QPushButton("Agregar")
-        self.btn_agregar.setStyleSheet("QPushButton { background-color: #4AA3C0; color: white; border-radius: 6px; padding: 12px 25px; font-size: 20px; font-weight: 600; border: none; outline: none; } QPushButton:hover { background-color: #3C8AA3; } QPushButton:pressed { background-color: #327589; }")
+        self.btn_agregar.setStyleSheet(
+            "QPushButton { background-color: #4AA3C0; color: white; border-radius: 6px; padding: 12px 25px; font-size: 20px; font-weight: 600; border: none; outline: none; } QPushButton:hover { background-color: #3C8AA3; } QPushButton:pressed { background-color: #327589; }"
+        )
         self.btn_agregar.setObjectName("btn_agregar")
         top_layout.addWidget(self.btn_agregar)
         main_layout.addLayout(top_layout)
@@ -253,11 +299,13 @@ class ContabilidadWidget(QWidget):
 
         # 📌 Resumen
         summary_group_box = QWidget()
-        summary_group_box.setStyleSheet("""
+        summary_group_box.setStyleSheet(
+            """
             QWidget { background-color: #FDF7FA; border: 1px solid #E0E0E0; border-radius: 8px; padding: 15px; margin-top: 10px; }
             QLabel { font-size: 15px; font-weight: 600; color: #5D566F; }
             QLineEdit { background-color: #FFFFFF; border: 1px solid #CED4DA; border-radius: 4px; padding: 5px; font-size: 15px; color: #333333; }
-        """)
+        """
+        )
         summary_layout = QFormLayout(summary_group_box)
         summary_layout.setContentsMargins(10, 10, 10, 10)
         summary_layout.setSpacing(10)
@@ -311,7 +359,6 @@ class ContabilidadWidget(QWidget):
         self.hide_tooltip_timer.setSingleShot(True)
         self.hide_tooltip_timer.timeout.connect(self.custom_tooltip_label.hide)
 
-
     def on_proceso_filter_changed(self, index):
         """
         Maneja el cambio en el filtro de procesos.
@@ -319,8 +366,6 @@ class ContabilidadWidget(QWidget):
         cliente_id = self.cliente_filter_combo.currentData()
         proceso_id = self.proceso_input.currentData()
         self.update_contabilidad_display()
-
-
 
     def update_cliente_combo(self, clientes_data: list):
         self.cliente_filter_combo.clear()
@@ -340,7 +385,8 @@ class ContabilidadWidget(QWidget):
         else:
             self.toggle_cliente_search_mode(False)
             self.proceso_input.setEnabled(cliente_id is not None)
-            if cliente_id: self.controller.get_procesos_for_client_sync(cliente_id)
+            if cliente_id:
+                self.controller.get_procesos_for_client_sync(cliente_id)
         self.update_contabilidad_display()
 
     def update_proceso_combo(self, procesos_data: list):
@@ -359,26 +405,36 @@ class ContabilidadWidget(QWidget):
         self.is_search_mode_active = enable
         self.cliente_search_label.setVisible(enable)
         self.cliente_search_input.setVisible(enable)
-        if not enable: self.cliente_search_input.clear()
+        if not enable:
+            self.cliente_search_input.clear()
         self.cliente_filter_combo.setVisible(not enable)
 
     def update_contabilidad_display(self):
         try:
             cliente_id = self.cliente_filter_combo.currentData()
             proceso_id = self.proceso_input.currentData()
-            tipo_id = self.tipo_input.currentData()
-            search_term = self.cliente_search_input.text() if self.is_search_mode_active else self.search_input.text()
-            if self.is_search_mode_active: cliente_id = None
+            tipo_contable_id = self.tipo_input.currentData()  # 🔄 renombrado
+            search_term = (
+                self.cliente_search_input.text()
+                if self.is_search_mode_active
+                else self.search_input.text()
+            )
+            if self.is_search_mode_active:
+                cliente_id = None
             self.controller.get_contabilidad_records_sync(
-                cliente_id=cliente_id, proceso_id=proceso_id,
-                search_term=search_term, tipo_id=tipo_id
+                cliente_id=cliente_id,
+                proceso_id=proceso_id,
+                search_term=search_term,
+                tipo_contable_id=tipo_contable_id,  # 🔄 actualizado
             )
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo actualizar la vista: {e}")
 
-    def perform_search(self): self.update_contabilidad_display()
+    def perform_search(self):
+        self.update_contabilidad_display()
 
-    def on_operation_successful(self, message: str): self.update_contabilidad_display()
+    def on_operation_successful(self, message: str):
+        self.update_contabilidad_display()
 
     def connect_signals(self):
         self.btn_agregar.clicked.connect(self.agregar_contabilidad)
@@ -386,22 +442,34 @@ class ContabilidadWidget(QWidget):
         self.btn_eliminar.clicked.connect(self.eliminar_contabilidad)
         self.btn_pdf.clicked.connect(self.on_generar_reporte_clicked)
         self.btn_limpiar_filtros.clicked.connect(self.limpiar_filtros)
-        self.cliente_filter_combo.currentIndexChanged.connect(self.on_cliente_filter_changed)
+        self.cliente_filter_combo.currentIndexChanged.connect(
+            self.on_cliente_filter_changed
+        )
         self.cliente_search_input.textChanged.connect(self.search_timer.start)
 
     def limpiar_filtros(self):
         self.toggle_cliente_search_mode(False)
         self.cliente_filter_combo.setCurrentIndex(0)
-        self.proceso_input.clear(); self.proceso_input.addItem("Todos", None); self.proceso_input.setEnabled(False)
+        self.proceso_input.clear()
+        self.proceso_input.addItem("Todos", None)
+        self.proceso_input.setEnabled(False)
         self.tipo_input.setCurrentIndex(0)
-        self.search_input.clear(); self.cliente_search_input.clear()
+        self.search_input.clear()
+        self.cliente_search_input.clear()
         self.update_contabilidad_display()
 
     def agregar_contabilidad(self):
         clientes_data = self.controller.get_all_clientes_sync()
         procesos_data = self.controller.get_all_procesos_sync()
         tipos_data = self.controller.get_tipos_contables_sync()
-        dialog = ContabilidadEditorDialog(None, clientes_data, procesos_data, tipos_data, self.controller.clientes_logic, self)
+        dialog = ContabilidadEditorDialog(
+            None,
+            clientes_data,
+            procesos_data,
+            tipos_data,
+            self.controller.clientes_logic,
+            self,
+        )
         if dialog.exec() == QDialog.Accepted:
             data = dialog.get_values()
             if data:
@@ -414,34 +482,60 @@ class ContabilidadWidget(QWidget):
             return
         row = sel[0].row()
         record_id = self.contabilidad_table_model.get_record_id(row)
-        if not record_id: return
-        datos_para_editar = self.controller.contabilidad_logic.get_contabilidad_record_raw(record_id)
+        if not record_id:
+            return
+        datos_para_editar = (
+            self.controller.contabilidad_logic.get_contabilidad_record_raw(record_id)
+        )
         clientes_data = self.controller.get_all_clientes_sync()
         procesos_data = self.controller.get_all_procesos_sync()
         tipos_data = self.controller.get_tipos_contables_sync()
-        dialog = ContabilidadEditorDialog(datos_para_editar, clientes_data, procesos_data, tipos_data, self.clientes_logic, self)
+        dialog = ContabilidadEditorDialog(
+            datos_para_editar,
+            clientes_data,
+            procesos_data,
+            tipos_data,
+            self.clientes_logic,
+            self,
+        )
         if dialog.exec() == QDialog.Accepted:
             nuevos = dialog.get_values()
-            self.controller.model.update_contabilidad_record(record_id=record_id, **nuevos)
+            self.controller.model.update_contabilidad_record(
+                record_id=record_id, **nuevos
+            )
             self.update_contabilidad_display()
 
     def eliminar_contabilidad(self):
         sel = self.table_view.selectionModel().selectedRows()
-        if not sel: return
+        if not sel:
+            return
         row = sel[0].row()
         record_id = self.contabilidad_table_model.get_record_id(row)
-        confirm = QMessageBox.question(self, "Eliminar", f"¿Eliminar registro ID {record_id}?",
-                                       QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        if confirm == QMessageBox.Yes: self.controller.delete_record(record_id)
+        confirm = QMessageBox.question(
+            self,
+            "Eliminar",
+            f"¿Eliminar registro ID {record_id}?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if confirm == QMessageBox.Yes:
+            self.controller.delete_record(record_id)
 
     def update_summary_display(self, summary_data: dict):
-        self.total_ingresos_display.setText(f"${summary_data.get('total_ingresos', 0.0):,.2f}")
-        self.total_gastos_display.setText(f"${summary_data.get('total_gastos', 0.0):,.2f}")
-        saldo = summary_data.get('saldo', 0.0)
+        self.total_ingresos_display.setText(
+            f"${summary_data.get('total_ingresos', 0.0):,.2f}"
+        )
+        self.total_gastos_display.setText(
+            f"${summary_data.get('total_gastos', 0.0):,.2f}"
+        )
+        saldo = summary_data.get("saldo", 0.0)
         self.saldo_display.setText(f"${saldo:,.2f}")
-        if saldo < 0: self.saldo_display.setStyleSheet("color:red; font-weight:bold;")
-        elif saldo > 0: self.saldo_display.setStyleSheet("color:green; font-weight:bold;")
-        else: self.saldo_display.setStyleSheet("color:black;")
+        if saldo < 0:
+            self.saldo_display.setStyleSheet("color:red; font-weight:bold;")
+        elif saldo > 0:
+            self.saldo_display.setStyleSheet("color:green; font-weight:bold;")
+        else:
+            self.saldo_display.setStyleSheet("color:black;")
 
     def check_user_permissions(self):
         self.btn_agregar.setEnabled(True)
@@ -449,39 +543,56 @@ class ContabilidadWidget(QWidget):
         self.btn_eliminar.setEnabled(True)
 
     def handle_procesos_for_dialog(self, procesos_data: list):
-        if hasattr(self, '_current_dialog_instance') and self._current_dialog_instance:
+        if hasattr(self, "_current_dialog_instance") and self._current_dialog_instance:
             self._current_dialog_instance.update_proceso_combo_dialog(procesos_data)
 
     def on_generar_reporte_clicked(self):
         try:
             cliente_id = self.cliente_filter_combo.currentData()
             tipo_id = self.tipo_input.currentData()
-            report_data = self.controller.contabilidad_logic.get_contabilidad_report_data(
-                cliente_id=cliente_id, proceso_id=self.proceso_input.currentData(),
-                tipo_id=tipo_id, search_term=self.search_input.text()
+            report_data = (
+                self.controller.contabilidad_logic.get_contabilidad_report_data(
+                    cliente_id=cliente_id,
+                    proceso_id=self.proceso_input.currentData(),
+                    tipo_id=tipo_id,
+                    search_term=self.search_input.text(),
+                )
             )
             if not (report_data and report_data.records):
-                QMessageBox.information(self, "Sin Datos", "No hay registros para generar el reporte.")
+                QMessageBox.information(
+                    self, "Sin Datos", "No hay registros para generar el reporte."
+                )
                 return
             dialogo = FormatoReporteDialog(self)
-            if not dialogo.exec() == QDialog.Accepted: return
+            if not dialogo.exec() == QDialog.Accepted:
+                return
             formato = dialogo.formato_seleccionado
             if formato == "pdf":
                 from .contabilidad_pdf import generar_pdf_resumen_contabilidad
+
                 extension, funcion = "pdf", generar_pdf_resumen_contabilidad
             elif formato == "excel":
                 from .contabilidad_excel import generar_excel_resumen_contabilidad
+
                 extension, funcion = "xlsx", generar_excel_resumen_contabilidad
             else:
                 from .contabilidad_csv import generar_csv_resumen_contabilidad
+
                 extension, funcion = "csv", generar_csv_resumen_contabilidad
-            nombre_sugerido = f"reporte_{datetime.now().strftime('%Y-%m-%d')}.{extension}"
-            ruta, _ = QFileDialog.getSaveFileName(self, f"Guardar Reporte {formato.upper()}",
-                                                  os.path.join(os.path.expanduser("~"), nombre_sugerido),
-                                                  f"Archivos {formato.upper()} (*.{extension})")
+            nombre_sugerido = (
+                f"reporte_{datetime.now().strftime('%Y-%m-%d')}.{extension}"
+            )
+            ruta, _ = QFileDialog.getSaveFileName(
+                self,
+                f"Guardar Reporte {formato.upper()}",
+                os.path.join(os.path.expanduser("~"), nombre_sugerido),
+                f"Archivos {formato.upper()} (*.{extension})",
+            )
             if ruta:
                 if funcion(ruta, report_data):
-                    QMessageBox.information(self, "Éxito", f"Reporte guardado en:\n{ruta}")
+                    QMessageBox.information(
+                        self, "Éxito", f"Reporte guardado en:\n{ruta}"
+                    )
                 else:
                     QMessageBox.critical(self, "Error", "Error al guardar reporte.")
         except Exception as e:
@@ -493,7 +604,8 @@ class ContabilidadWidget(QWidget):
         for idx in sel:
             row = idx.row()
             record_id = self.contabilidad_table_model.get_record_id(row)
-            if record_id: ids.append(int(record_id))
+            if record_id:
+                ids.append(int(record_id))
         return ids
 
     def reselect_row_by_id(self, record_id: int):
