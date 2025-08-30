@@ -235,6 +235,7 @@ class ContabilidadWidget(QWidget):
 
         top_layout.addStretch()
         self.btn_agregar = QPushButton("Agregar")
+        self.btn_agregar.setStyleSheet("QPushButton { background-color: #6CBF84; color: white; border-radius: 6px; padding: 8px 18px; font-size: 15px; font-weight: 600; border: none; } QPushButton:hover { background-color: #5AA870; } QPushButton:pressed { background-color: #4C8C5D; }")
         self.btn_agregar.setObjectName("btn_agregar")
         top_layout.addWidget(self.btn_agregar)
         main_layout.addLayout(top_layout)
