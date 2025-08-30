@@ -308,7 +308,7 @@ class ContabilidadWidget(QWidget):
 
         # 🔧 Opcional (para mejorar estética, no obligatorio)
         self.table_view.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
-        self.table_view.verticalHeader().setDefaultSectionSize(28)  # alto de cada fila
+        self.table_view.verticalHeader().setDefaultSectionSize(20)  # alto de cada fila
         main_layout.addWidget(self.table_view)
 
         # 📌 Resumen
