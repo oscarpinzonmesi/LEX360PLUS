@@ -7,7 +7,9 @@ from SELECTA_SCAM.modulos.contabilidad.contabilidad_logic import ContabilidadLog
 from SELECTA_SCAM.modulos.clientes.clientes_logic import ClientesLogic
 from SELECTA_SCAM.modulos.procesos.procesos_logic import ProcesosLogic
 from SELECTA_SCAM.modulos.contabilidad.contabilidad_model import ContabilidadModel
-from SELECTA_SCAM.modulos.contabilidad.contabilidad_pdf import generar_pdf_resumen_contabilidad
+from SELECTA_SCAM.modulos.contabilidad.contabilidad_pdf import (
+    generar_pdf_resumen_contabilidad,
+)
 
 from PyQt5.QtWidgets import QMessageBox
 
@@ -29,11 +31,14 @@ class ContabilidadController(QObject):
     documentos_filtrados_loaded = pyqtSignal(list)  # Reservada para documentos
     record_updated = pyqtSignal(int)
 
-    def __init__(self, model: ContabilidadModel,
-                 contabilidad_logic: ContabilidadLogic,
-                 clientes_logic: ClientesLogic,
-                 procesos_logic: ProcesosLogic,
-                 parent=None):
+    def __init__(
+        self,
+        model: ContabilidadModel,
+        contabilidad_logic: ContabilidadLogic,
+        clientes_logic: ClientesLogic,
+        procesos_logic: ProcesosLogic,
+        parent=None,
+    ):
         super().__init__(parent)
         self.model = model
         self.contabilidad_logic = contabilidad_logic
@@ -46,10 +51,13 @@ class ContabilidadController(QObject):
     # CRUD + sincronización con tabla
     # -------------------------------
 
-    def get_contabilidad_records_sync(self, cliente_id: int = None,
-                                      proceso_id: int = None,
-                                      search_term: str = None,
-                                      tipo_id: int = None):
+    def get_contabilidad_records_sync(
+        self,
+        cliente_id: int = None,
+        proceso_id: int = None,
+        search_term: str = None,
+        tipo_id: int = None,
+    ):
         """
         Recupera registros filtrados, actualiza la tabla y emite el resumen de totales.
         """
@@ -58,10 +66,12 @@ class ContabilidadController(QObject):
                 cliente_id=cliente_id,
                 proceso_id=proceso_id,
                 search_term=search_term,
-                tipo_id=tipo_id
+                tipo_id=tipo_id,
             )
             self.data_updated.emit(records)
-            self.logger.info(f"ContabilidadController: Registros emitidos ({len(records)}).")
+            self.logger.info(
+                f"ContabilidadController: Registros emitidos ({len(records)})."
+            )
 
             # Calcular resumen
             total_ingresos, total_gastos = 0.0, 0.0
@@ -76,32 +86,35 @@ class ContabilidadController(QObject):
             summary_data = {
                 "total_ingresos": total_ingresos,
                 "total_gastos": total_gastos,
-                "saldo": total_ingresos - total_gastos
+                "saldo": total_ingresos - total_gastos,
             }
             self.summary_data_loaded.emit(summary_data)
         except Exception as e:
             self.logger.exception("Error al cargar registros/resumen")
             self.operation_failed.emit(f"Error al cargar datos y resumen: {str(e)}")
 
-    def add_record(self, cliente_id, proceso_id, tipo_contable_id, descripcion, monto, fecha):
-    try:
-        self.contabilidad_logic.add_contabilidad_record(
-            cliente_id=cliente_id,
-            proceso_id=proceso_id,
-            tipo_contable_id=tipo_contable_id,
-            descripcion=descripcion,
-            monto=monto,
-            fecha=fecha
-        )
-        self.load_records()  # recargar tabla/resumen
-    except Exception as e:
-        logger.error("Error inesperado al añadir registro", exc_info=True)
-        QMessageBox.critical(None, "Error", f"Error inesperado al añadir registro: {e}")
+    def add_record(
+        self, cliente_id, proceso_id, tipo_contable_id, descripcion, monto, fecha
+    ):
+        try:
+            self.contabilidad_logic.add_contabilidad_record(
+                cliente_id=cliente_id,
+                proceso_id=proceso_id,
+                tipo_contable_id=tipo_contable_id,
+                descripcion=descripcion,
+                monto=monto,
+                fecha=fecha,
+            )
+            self.load_records()  # recargar tabla/resumen
+        except Exception as e:
+            logger.error("Error inesperado al añadir registro", exc_info=True)
+            QMessageBox.critical(
+                None, "Error", f"Error inesperado al añadir registro: {e}"
+            )
 
-
-
-        
-    def update_record(self, record_id, cliente_id, proceso_id, tipo_id, descripcion, valor, fecha):
+    def update_record(
+        self, record_id, cliente_id, proceso_id, tipo_id, descripcion, valor, fecha
+    ):
         """
         Actualiza un registro en DB.
         """
@@ -109,16 +122,21 @@ class ContabilidadController(QObject):
             self.contabilidad_logic.update_contabilidad_record(
                 record_id, cliente_id, proceso_id, tipo_id, descripcion, valor, fecha
             )
-            self.operation_successful.emit(f"Registro ID {record_id} actualizado exitosamente.")
+            self.operation_successful.emit(
+                f"Registro ID {record_id} actualizado exitosamente."
+            )
             return True
         except Exception as e:
             self.logger.exception("Error al actualizar registro")
             self.operation_failed.emit(f"Error inesperado al actualizar registro: {e}")
             return False
 
-    def delete_record(self, record_id,
-                      current_filter_cliente_id: int = None,
-                      current_filter_proceso_id: int = None):
+    def delete_record(
+        self,
+        record_id,
+        current_filter_cliente_id: int = None,
+        current_filter_proceso_id: int = None,
+    ):
         """
         Elimina un registro de DB y refresca.
         """
@@ -126,9 +144,11 @@ class ContabilidadController(QObject):
             self.contabilidad_logic.delete_contabilidad_record(record_id)
             self.get_contabilidad_records_sync(
                 cliente_id=current_filter_cliente_id,
-                proceso_id=current_filter_proceso_id
+                proceso_id=current_filter_proceso_id,
             )
-            self.operation_successful.emit(f"Registro ID {record_id} eliminado exitosamente.")
+            self.operation_successful.emit(
+                f"Registro ID {record_id} eliminado exitosamente."
+            )
             return True
         except ValueError as ve:
             self.error_occurred.emit(str(ve))
@@ -143,8 +163,9 @@ class ContabilidadController(QObject):
     # Datos auxiliares
     # -------------------------------
 
-    def get_summary_data(self, cliente_id=None, proceso_id=None,
-                         search_term=None, tipo_id=None) -> dict:
+    def get_summary_data(
+        self, cliente_id=None, proceso_id=None, search_term=None, tipo_id=None
+    ) -> dict:
         """
         Obtiene datos de resumen delegando en la lógica.
         """
@@ -178,7 +199,7 @@ class ContabilidadController(QObject):
 
     def get_procesos_for_client_sync(self, cliente_id: int = None):
         """
-        Carga procesos para un cliente. 
+        Carga procesos para un cliente.
         ⚠️ Actualmente placeholder, emite lista vacía.
         """
         self.procesos_loaded_for_client.emit([])
@@ -217,28 +238,40 @@ class ContabilidadController(QObject):
     def generar_pdf_con_filtros(self, cliente_id, proceso_id, tipo_id, search_term):
         try:
             records = self.contabilidad_logic.get_contabilidad_data_for_display(
-                cliente_id=cliente_id, proceso_id=proceso_id,
-                tipo_id=tipo_id, search_term=search_term
+                cliente_id=cliente_id,
+                proceso_id=proceso_id,
+                tipo_id=tipo_id,
+                search_term=search_term,
             )
             if not records:
-                QMessageBox.information(None, "Advertencia", "No hay registros para generar el PDF.")
+                QMessageBox.information(
+                    None, "Advertencia", "No hay registros para generar el PDF."
+                )
                 return
             generar_pdf_resumen_contabilidad("reporte_filtrado.pdf", records)
             self.operation_successful.emit("PDF de resumen generado exitosamente.")
         except Exception as e:
             self.logger.error(f"Error al generar PDF: {e}")
-            QMessageBox.critical(None, "Error", f"Ocurrió un error inesperado al generar el PDF: {e}")
+            QMessageBox.critical(
+                None, "Error", f"Ocurrió un error inesperado al generar el PDF: {e}"
+            )
             self.operation_failed.emit(f"Fallo al generar PDF: {e}")
 
     def generar_pdf_de_seleccion(self, record_ids: list):
         try:
             if not record_ids:
-                QMessageBox.information(None, "Advertencia", "No hay registros seleccionados para generar el PDF.")
+                QMessageBox.information(
+                    None,
+                    "Advertencia",
+                    "No hay registros seleccionados para generar el PDF.",
+                )
                 return
             records = self.contabilidad_logic.get_records_by_ids(record_ids)
             generar_pdf_resumen_contabilidad("reporte_seleccion.pdf", records)
             self.operation_successful.emit("PDF de selección generado exitosamente.")
         except Exception as e:
             self.logger.error(f"Error al generar PDF selección: {e}")
-            QMessageBox.critical(None, "Error", f"Ocurrió un error inesperado al generar el PDF: {e}")
+            QMessageBox.critical(
+                None, "Error", f"Ocurrió un error inesperado al generar el PDF: {e}"
+            )
             self.operation_failed.emit(f"Fallo al generar PDF selección: {e}")
