@@ -1616,7 +1616,12 @@ class DocumentosModule(QWidget):
         # Refrescar
         self.tabla_documentos.clearSelection()
         self.ejecutar_busqueda()
-        # (El auto-retorno al tablero si queda en cero lo hace update_document_table)
+        # Si quedamos en papelera y ya no hay filas, volver a Activos
+        modelo = getattr(self, 'documentos_model', None) or getattr(self, 'tabla_documentos_model', None)
+        if self.mostrando_papelera and modelo and modelo.rowCount() == 0:
+            logger.info("Papelera vacía tras eliminación → retornando a Documentos Activos.")
+            self.mostrar_documentos_activos()
+
 
     def ejecutar_busqueda(self):
         """
