@@ -1708,7 +1708,7 @@ class DocumentosModule(QWidget):
                 self.btn_eliminar_definitivo.setVisible(True)
                 self.btn_papelera.setText("Ver Documentos Activos")
                 self.btn_papelera.setToolTip("Haz clic para ver los documentos activos.")
-
+                self._set_enviar_papelera_visible(False)
                 # Ocultar los que NO deben verse en papelera
                 if hasattr(self, 'btn_enviar_papelera'):
                     self.btn_enviar_papelera.setVisible(False)
