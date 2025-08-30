@@ -1,13 +1,13 @@
-# SELECTA_SCAM/modulos/contabilidad/contabilidad_db.py
-
 from contextlib import contextmanager
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func, or_
-
 from ...db.models import Contabilidad, Cliente, Proceso
 from ...utils.db_manager import get_db_session
 
 class ContabilidadDB:
+    def __init__(self):
+        pass
+
     @contextmanager
     def get_session(self):
         session = get_db_session()
@@ -56,9 +56,7 @@ class ContabilidadDB:
 
     def get_contabilidad_records_by_ids(self, record_ids: list):
         with self.get_session() as session:
-            return session.query(Contabilidad).filter(
-                Contabilidad.id.in_(record_ids)
-            ).options(
+            return session.query(Contabilidad).filter(Contabilidad.id.in_(record_ids)).options(
                 joinedload(Contabilidad.cliente),
                 joinedload(Contabilidad.proceso)
             ).all()
