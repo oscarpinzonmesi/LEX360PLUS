@@ -1472,7 +1472,8 @@ class DocumentosModule(QWidget):
     
     
     def toggle_papelera_view(self):
-        # Ocultar tooltip al interactuar
+        self.mostrando_papelera = not self.mostrando_papelera
+
         if hasattr(self, 'custom_tooltip_label') and self.custom_tooltip_label is not None:
             self.custom_tooltip_label.hide()
         if hasattr(self, 'hide_tooltip_timer') and self.hide_tooltip_timer.isActive():
@@ -1719,7 +1720,6 @@ class DocumentosModule(QWidget):
                 # Si es texto → nombre del cliente
                 final_cliente_nombre_filter = cliente_input_text
 
-        # --- Filtros de documento (nombre, tipo, etc.) ---
         combined_doc_search_text = self.search_doc_input.text().strip()
 
         final_documento_id_filter = None
