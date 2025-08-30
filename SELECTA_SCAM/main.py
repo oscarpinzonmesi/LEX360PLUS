@@ -178,6 +178,7 @@ class MainApp(QMainWindow):
         )
 
         # --- FIN DE LA CORRECCIÓN DE ARQUITECTURA ---
+
         self.procesos_model_instance = ProcesosModel(
             self.procesos_db_instance, 
             clientes_db=self.clientes_db_instance, 
