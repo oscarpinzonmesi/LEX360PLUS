@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QHBoxLayout,
 )
+from datetime import date
 from PyQt5.QtCore import Qt, QDate, pyqtSignal, QVariant
 from PyQt5.QtGui import QFont
 import logging
