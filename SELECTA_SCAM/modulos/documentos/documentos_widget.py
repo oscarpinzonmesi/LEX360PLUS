@@ -1743,6 +1743,7 @@ class DocumentosModule(QWidget):
                 self.btn_eliminar_definitivo.setVisible(False)
                 self.btn_papelera.setText("Ver Papelera")
                 self.btn_papelera.setToolTip("Haz clic para ver los documentos enviados a la papelera.")
+                self._set_enviar_papelera_visible(True) 
                 if hasattr(self, 'btn_enviar_papelera'):
                     self.btn_enviar_papelera.setVisible(True)
                 if hasattr(self, 'btn_editar_seleccion'):
