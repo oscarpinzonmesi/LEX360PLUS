@@ -1768,78 +1768,44 @@ class DocumentosModule(QWidget):
             self.mostrar_error("Error de Búsqueda", f"No se pudieron cargar los documentos: {e}")
 
     def limpiar_filtros_busqueda(self, keep_mode=False):
-        """
-        Limpia campos/controles de búsqueda y de carga de documentos.
-        Si keep_mode=True, NO modifica self.mostrando_papelera.
-        """
+        """Limpia filtros y campos; si keep_mode=True NO toca self.mostrando_papelera."""
         logger.info("Limpiando todos los filtros de búsqueda...")
-        # --- Limpieza de filtros de búsqueda ---
-        try:
-            self.search_cliente_combo.setCurrentIndex(0)
-        except Exception:
-            pass
 
+        # Filtros de búsqueda
+        try: self.search_cliente_combo.setCurrentIndex(0)
+        except: pass
+        try: self.search_cliente_input.clear()
+        except: pass
+        try: self.search_doc_input.clear()
+        except: pass
         try:
-            self.search_cliente_input.clear()
-        except Exception:
-            pass
-
-        try:
-            self.search_doc_input.clear()
-        except Exception:
-            pass
-
-        try:
-            # Si existe 'Todos', lo seleccionamos; si no, dejamos como esté
             idx_todos = self.search_tipo_doc_combo.findText("Todos")
             if idx_todos >= 0:
                 self.search_tipo_doc_combo.setCurrentIndex(idx_todos)
-        except Exception:
-            pass
+        except: pass
 
-        # --- Limpieza de campos de carga/edición ---
-        try:
-            self.cliente_combo.setCurrentIndex(0)
-        except Exception:
-            pass
+        # Campos de carga/edición
+        try: self.cliente_combo.setCurrentIndex(0)
+        except: pass
+        try: self.nombre_doc_input.clear()
+        except: pass
+        try: self.tipo_documento_combo.setCurrentIndex(0)
+        except: pass
+        try: self.archivo_path_display.clear()
+        except: pass
 
-        try:
-            self.nombre_doc_input.clear()
-        except Exception:
-            pass
-
-        try:
-            self.tipo_documento_combo.setCurrentIndex(0)
-        except Exception:
-            pass
-
-        try:
-            self.archivo_path_display.clear()
-        except Exception:
-            pass
-
-        # Ocultar controles de edición si no estamos editando
         if not getattr(self, "is_editing", False):
-            try:
-                self.label_ruta_archivo.setVisible(False)
-                self.archivo_path_display.setVisible(False)
-                self.btn_editar.setVisible(False)
-                self.btn_cancelar_edicion.setVisible(False)
-                self.doc_id_label.setVisible(False)
-                self.doc_id_display.setVisible(False)
-            except Exception:
-                pass
+            for w in ("label_ruta_archivo","archivo_path_display","btn_editar","btn_cancelar_edicion","doc_id_label","doc_id_display"):
+                if hasattr(self, w):
+                    getattr(self, w).setVisible(False)
 
-        # ⚠️ NO cambiar self.mostrando_papelera si keep_mode=True
         if not keep_mode:
-            # Si quieres conservar el comportamiento anterior (por si antes lo ponías en False), descomenta:
+            # Si quieres forzar activos en limpiezas manuales, descomenta:
             # self.mostrando_papelera = False
             pass
 
-        logger.info(f"FILTROS FINALES enviados al controlador (unificado): "
-                    f"cliente_id_exacto=None, cliente_nombre_filtro_texto='', "
-                    f"documento_id_filtro=None, tipo_documento_filtro='None', "
-                    f"mostrando_papelera={self.mostrando_papelera}")
+        logger.info(f"FILTROS FINALES enviados al controlador (unificado): cliente_id_exacto=None, cliente_nombre_filtro_texto='', documento_id_filtro=None, tipo_documento_filtro='None', mostrando_papelera={self.mostrando_papelera}")
+
 
     def on_search_cliente_changed(self):
         # Ocultar tooltip al interactuar
