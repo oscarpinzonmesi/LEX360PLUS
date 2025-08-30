@@ -1,6 +1,18 @@
 from PyQt5.QtWidgets import (
-    QDialog, QFormLayout, QComboBox, QLineEdit, QDateEdit, QDialogButtonBox, QMessageBox, QLabel,
-    QListWidget, QListWidgetItem, QGridLayout, QVBoxLayout, QWidget, QHBoxLayout
+    QDialog,
+    QFormLayout,
+    QComboBox,
+    QLineEdit,
+    QDateEdit,
+    QDialogButtonBox,
+    QMessageBox,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QGridLayout,
+    QVBoxLayout,
+    QWidget,
+    QHBoxLayout,
 )
 from PyQt5.QtCore import Qt, QDate, pyqtSignal, QVariant
 from PyQt5.QtGui import QFont
@@ -10,10 +22,19 @@ logger = logging.getLogger(__name__)
 
 SEARCH_MODE = "SEARCH_MODE"
 
+
 class ContabilidadEditorDialog(QDialog):
     cliente_selected = pyqtSignal(int)
 
-    def __init__(self, contabilidad_data=None, clientes_data=None, procesos_data=None, tipos_data=None, clientes_logic=None, parent=None):
+    def __init__(
+        self,
+        contabilidad_data=None,
+        clientes_data=None,
+        procesos_data=None,
+        tipos_data=None,
+        clientes_logic=None,
+        parent=None,
+    ):
         super().__init__(parent)
         self.input_font = QFont()
         self.input_font.setPointSize(22)
@@ -23,13 +44,18 @@ class ContabilidadEditorDialog(QDialog):
         self.tipos_data = tipos_data if tipos_data is not None else []
         self.clientes_logic = clientes_logic
         self.parent_widget = parent
-        self.setWindowTitle("Editar Registro de Contabilidad" if contabilidad_data else "Agregar Registro de Contabilidad")
+        self.setWindowTitle(
+            "Editar Registro de Contabilidad"
+            if contabilidad_data
+            else "Agregar Registro de Contabilidad"
+        )
         self.setMinimumSize(1000, 700)
         self.init_ui()
         self.load_data_into_form()
         self.setFont(self.input_font)
         self.connect_search_signals()
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QDialog { background-color: #F8F0F5; color: #333333; font-family: 'Segoe UI', 'Arial', sans-serif; }
             QLabel { color: #5D566F; font-size: 15px; font-weight: 700; padding-right: 5px; }
             #dialogoInput { font-size: 30px; padding: 8px 12px; border: 1px solid #CED4DA; border-radius: 5px; color: #495057; background-color: white; }
@@ -43,7 +69,8 @@ class ContabilidadEditorDialog(QDialog):
             QListWidget#cliente_search_results_list { border: 1px solid #CED4DA; border-radius: 5px; background-color: #FFFFFF; padding: 5px; }
             QListWidget#cliente_search_results_list::item { padding: 5px; }
             QListWidget#cliente_search_results_list::item:hover { background-color: #F8F0F5; }
-        """)
+        """
+        )
 
     def init_ui(self):
         self.main_layout = QVBoxLayout()
@@ -64,14 +91,17 @@ class ContabilidadEditorDialog(QDialog):
         self.cliente_search_input = QLineEdit()
         self.cliente_search_input.setObjectName("dialogoInput")
         self.cliente_search_input.setObjectName("cliente_search_input")
-        self.cliente_search_input.setPlaceholderText("Buscar cliente por nombre o ID...")
+        self.cliente_search_input.setPlaceholderText(
+            "Buscar cliente por nombre o ID..."
+        )
         self.cliente_search_input.setFont(self.input_font)
         self.cliente_search_input.hide()
 
         self.cliente_search_input.setMinimumWidth(600)
-        self.cliente_search_input.setSizePolicy(self.cliente_search_input.sizePolicy().Expanding,
-                                                self.cliente_search_input.sizePolicy().Fixed)
-
+        self.cliente_search_input.setSizePolicy(
+            self.cliente_search_input.sizePolicy().Expanding,
+            self.cliente_search_input.sizePolicy().Fixed,
+        )
 
         self.cliente_search_results_list = QListWidget()
         self.cliente_search_results_list.setObjectName("dialogoInput")
@@ -80,11 +110,10 @@ class ContabilidadEditorDialog(QDialog):
         self.cliente_search_results_list.setFont(self.input_font)
         self.cliente_search_results_list.setSizePolicy(
             self.cliente_search_results_list.sizePolicy().Expanding,
-            self.cliente_search_results_list.sizePolicy().Expanding
+            self.cliente_search_results_list.sizePolicy().Expanding,
         )
         self.cliente_search_results_list.hide()
         self.cliente_search_results_list.setMinimumWidth(600)
-
 
         self.cliente_section_layout.addWidget(self.cliente_input)
         self.cliente_section_layout.addWidget(self.cliente_search_input)
@@ -127,7 +156,9 @@ class ContabilidadEditorDialog(QDialog):
 
         self.main_layout.addLayout(form_layout)
 
-        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        self.buttons = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self
+        )
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
         self.main_layout.addWidget(self.buttons)
@@ -140,8 +171,12 @@ class ContabilidadEditorDialog(QDialog):
             self.accept()
 
     def connect_search_signals(self):
-        self.cliente_search_input.textChanged.connect(self.on_cliente_search_input_changed)
-        self.cliente_search_results_list.itemClicked.connect(self.on_cliente_search_result_selected)
+        self.cliente_search_input.textChanged.connect(
+            self.on_cliente_search_input_changed
+        )
+        self.cliente_search_results_list.itemClicked.connect(
+            self.on_cliente_search_result_selected
+        )
 
     def populate_cliente_combo(self):
         self.cliente_input.blockSignals(True)
@@ -202,28 +237,38 @@ class ContabilidadEditorDialog(QDialog):
     def get_values(self):
         cliente_id = self.cliente_input.currentData()
         if cliente_id == SEARCH_MODE or cliente_id is None:
-            QMessageBox.warning(self, "Advertencia", "Debe seleccionar un cliente válido para guardar el registro.")
+            QMessageBox.warning(
+                self,
+                "Advertencia",
+                "Debe seleccionar un cliente válido para guardar el registro.",
+            )
             return None
         tipo_id = self.tipo_input.currentData()
         if tipo_id is None:
-            QMessageBox.warning(self, "Advertencia", "Debe seleccionar un tipo de registro válido.")
+            QMessageBox.warning(
+                self, "Advertencia", "Debe seleccionar un tipo de registro válido."
+            )
             return None
         valor_str = self.valor_input.text().strip()
         if not valor_str:
-            QMessageBox.warning(self, "Advertencia", "El campo Valor no puede estar vacío.")
+            QMessageBox.warning(
+                self, "Advertencia", "El campo Valor no puede estar vacío."
+            )
             return None
         try:
             valor_numeric = float(valor_str)
         except ValueError:
-            QMessageBox.warning(self, "Advertencia", "El campo Valor debe ser un número válido.")
+            QMessageBox.warning(
+                self, "Advertencia", "El campo Valor debe ser un número válido."
+            )
             return None
         datos = {
             "cliente_id": cliente_id,
             "proceso_id": self.proceso_input.currentData(),
-            "tipo_contable_id": tipo_id,   # <--- corregido
+            "tipo_contable_id": tipo_id,  # <--- corregido
             "descripcion": self.descripcion_input.text().strip(),
-            "monto": valor_numeric,        # <--- ojo: en el modelo se llama `monto`, no `valor`
-            "fecha": self.fecha_input.date().toString("yyyy-MM-dd")
+            "monto": valor_numeric,  # <--- ojo: en el modelo se llama `monto`, no `valor`
+            "fecha": self.fecha_input.date().toPyDate(),
         }
 
         print(f"DEBUG DIALOG: Valores devueltos: {datos}")
@@ -232,16 +277,22 @@ class ContabilidadEditorDialog(QDialog):
     def on_cliente_combo_changed(self, index):
         selected_data = self.cliente_input.itemData(index)
         if selected_data == SEARCH_MODE:
-            logger.debug("ContabilidadEditorDialog: Activando modo de búsqueda de cliente.")
+            logger.debug(
+                "ContabilidadEditorDialog: Activando modo de búsqueda de cliente."
+            )
             self.toggle_cliente_search_mode(True)
             self.cliente_search_input.setFocus()
         else:
-            logger.debug("ContabilidadEditorDialog: Desactivando modo de búsqueda de cliente.")
+            logger.debug(
+                "ContabilidadEditorDialog: Desactivando modo de búsqueda de cliente."
+            )
             self.toggle_cliente_search_mode(False)
 
     def toggle_cliente_search_mode(self, enable: bool):
         if enable:
-            logger.debug("ContabilidadEditorDialog: Activando modo de búsqueda de cliente.")
+            logger.debug(
+                "ContabilidadEditorDialog: Activando modo de búsqueda de cliente."
+            )
             self.cliente_input.setVisible(False)
             self.cliente_input.setEnabled(False)
             self.cliente_search_input.setVisible(True)
@@ -249,9 +300,13 @@ class ContabilidadEditorDialog(QDialog):
             self.cliente_search_input.clear()
             self.cliente_search_input.setFocus()
             self.cliente_search_results_list.clear()
-            self.cliente_search_results_list.addItem("Comience a escribir para buscar clientes...")
+            self.cliente_search_results_list.addItem(
+                "Comience a escribir para buscar clientes..."
+            )
         else:
-            logger.debug("ContabilidadEditorDialog: Desactivando modo de búsqueda de cliente.")
+            logger.debug(
+                "ContabilidadEditorDialog: Desactivando modo de búsqueda de cliente."
+            )
             self.cliente_input.setVisible(True)
             self.cliente_input.setEnabled(True)
             self.cliente_search_input.setVisible(False)
@@ -272,17 +327,23 @@ class ContabilidadEditorDialog(QDialog):
                         item.setData(Qt.UserRole, client_id)
                         self.cliente_search_results_list.addItem(item)
                 else:
-                    self.cliente_search_results_list.addItem("No se encontraron clientes.")
+                    self.cliente_search_results_list.addItem(
+                        "No se encontraron clientes."
+                    )
             except Exception as e:
                 logger.error(f"Error al buscar clientes en el diálogo: {e}")
                 self.cliente_search_results_list.addItem("Error al buscar.")
         elif len(text) < 1:
-            self.cliente_search_results_list.addItem("Comience a escribir para buscar clientes...")
+            self.cliente_search_results_list.addItem(
+                "Comience a escribir para buscar clientes..."
+            )
 
     def on_cliente_search_result_selected(self, item: QListWidgetItem):
         cliente_id = item.data(Qt.UserRole)
         if cliente_id is None:
-            logger.warning("ContabilidadEditorDialog: Selección de búsqueda inválida (ID no encontrado).")
+            logger.warning(
+                "ContabilidadEditorDialog: Selección de búsqueda inválida (ID no encontrado)."
+            )
             return
         cliente_nombre = item.text()
         index = self.cliente_input.findData(cliente_id)
