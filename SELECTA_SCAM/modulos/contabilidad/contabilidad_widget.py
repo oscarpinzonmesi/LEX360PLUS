@@ -1,4 +1,3 @@
-import logging
 from PyQt5.QtWidgets import (
     QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout,
     QMessageBox, QHeaderView, QComboBox, QDateEdit, QFileDialog, QTableView,
@@ -7,23 +6,17 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QDate, QAbstractTableModel, QVariant, pyqtSignal, QModelIndex
 from PyQt5.QtGui import QColor, QFont
+from datetime import date, datetime
 import os
-from datetime import date 
-from PyQt5.QtCore import Qt, QTimer
-from datetime import datetime
+
 from SELECTA_SCAM.modulos.contabilidad.contabilidad_controller import ContabilidadController
-from SELECTA_SCAM.modulos.contabilidad.contabilidad_model import ContabilidadModel 
+from SELECTA_SCAM.modulos.contabilidad.contabilidad_model import ContabilidadModel
 from SELECTA_SCAM.modulos.contabilidad.contabilidad_editor_dialog import ContabilidadEditorDialog
 from SELECTA_SCAM.modulos.clientes.clientes_logic import ClientesLogic
 from SELECTA_SCAM.modulos.procesos.procesos_logic import ProcesosLogic
-from PyQt5.QtWidgets import QDialog # Asegúrate de tener esta línea
 from .contabilidad_pdf import generar_pdf_resumen_contabilidad
-
 from SELECTA_SCAM.modulos.contabilidad.contabilidad_logic import ContabilidadLogic
 
-logger = logging.getLogger(__name__)
-
-# Puedes añadir esta clase al principio de contabilidad_widget.py
 
 class FormatoReporteDialog(QDialog):
     def __init__(self, parent=None):
@@ -55,36 +48,29 @@ class FormatoReporteDialog(QDialog):
         self.formato_seleccionado = formato
         self.accept()
 
+
 class ContabilidadTableModel(QAbstractTableModel):
-    """
-    Modelo de tabla para la visualización de registros de contabilidad,
-    fiel a la implementación original del usuario.
-    """
     HEADERS = ["ID", "Cliente", "Proceso", "Tipo", "Descripción", "Valor", "Fecha"]
     COLUMN_MAP = {
         "ID": 0, "Cliente": 1, "Proceso": 2, "Tipo": 3, "Descripción": 4, "Valor": 5, "Fecha": 6
     }
-    error_occurred = pyqtSignal(str) # Señal para reportar errores desde el modelo
+    error_occurred = pyqtSignal(str)
+
+    def __init__(self, controller, parent=None):
+        super().__init__(parent)
+        self.controller = controller
+        self._headers = ["ID", "Fecha", "Cliente", "Proceso", "Tipo", "Descripción", "Valor"]
+        self._data = []
 
     def rowCount(self, parent=QModelIndex()):
         if parent.isValid():
             return 0
         return len(self._data)
 
-    def set_data(self, data):
-        """
-        Establece los nuevos datos en el modelo de la tabla.
-        """
-        self.beginResetModel()
-        self._data = data
-        self.endResetModel()
-    
     def columnCount(self, parent=QModelIndex()):
         if parent.isValid():
             return 0
         return len(self.HEADERS)
-
-    # En SELECTA_SCAM/modulos/contabilidad/contabilidad_widget.py -> class ContabilidadTableModel
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid() or not (0 <= index.row() < len(self._data)):
@@ -93,7 +79,6 @@ class ContabilidadTableModel(QAbstractTableModel):
         record = self._data[index.row()]
         col = index.column()
 
-        # --- Lógica para mostrar el TEXTO ---
         if role == Qt.DisplayRole:
             try:
                 if col == self.COLUMN_MAP["ID"]:
@@ -113,78 +98,53 @@ class ContabilidadTableModel(QAbstractTableModel):
             except IndexError:
                 return "Error de Datos"
         
-        # --- Lógica para los COLORES del texto ---
         elif role == Qt.ForegroundRole:
             try:
                 tipo_value = str(record[3]).lower()
                 if col == self.COLUMN_MAP["Tipo"]:
                     if "ingreso" in tipo_value:
-                        return QColor("#006400") # Verde
+                        return QColor("#006400")
                     elif "gasto" in tipo_value:
-                        return QColor("#8B0000") # Rojo
+                        return QColor("#8B0000")
                 if col == self.COLUMN_MAP["Valor"]:
                     return QColor("#5AA1B9")
             except IndexError:
-                pass # Si hay un error, simplemente no aplicamos color
-            
+                pass
         return QVariant()
-    
+
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
             if 0 <= section < len(self.HEADERS):
                 return self.HEADERS[section]
         return QVariant()
-    
+
+    def set_data(self, data):
+        self.beginResetModel()
+        self._data = data
+        self.endResetModel()
+
     def get_record_id(self, row):
-        """Retorna el ID del registro en la fila especificada."""
         if 0 <= row < len(self._data):
             return self._data[row][self.COLUMN_MAP["ID"]]
         return None
-    
+
     def get_record_data(self, row):
-        """
-        Retorna todos los datos de la fila especificada tal como están en _data.
-        Esto es útil para pre-rellenar el diálogo de edición.
-        """
         if 0 <= row < len(self._data):
             return self._data[row]
         return None
 
+    def get_all_records(self):
+        return self._data
+
     def load_data(self, cliente_id: int = None, proceso_id: int = None):
         try:
             self._data = self.controller.get_contabilidad_data_for_table(cliente_id, proceso_id)
-            logging.debug(f"ContabilidadTableModel: load_data recibido {len(self._data)} registros para cliente_id={cliente_id}.")
             self.layoutChanged.emit()
         except Exception as e:
-            logger.error(f"ContabilidadTableModel: Error al cargar datos: {e}")
             self.controller.operation_failed.emit(f"Error al cargar datos de tabla: {e}")
             self._data = []
             self.layoutChanged.emit()
 
-    def __init__(self, controller, parent=None): # Asegúrate de que reciba el controller
-        super().__init__(parent)
-        self.controller = controller 
-        self._headers = ["ID", "Fecha", "Cliente", "Proceso", "Tipo", "Descripción", "Valor"]
-        self._data = []
-    
-    def get_all_records(self):
-        """
-        Devuelve todos los registros actualmente en el modelo.
-        """
-        return self._data
-    
-    # En: contabilidad_widget.py
-# Pega este método nuevo dentro de la clase ContabilidadTableModel
-
-    def print_internal_data(self, step_name: str):
-        """Función de diagnóstico para imprimir los datos internos del modelo."""
-        print(f"--- DATOS INTERNOS DEL MODELO ({step_name}) ---")
-        if not self._data:
-            print(" -> El modelo está vacío.")
-            return
-        for i, row_tuple in enumerate(self._data):
-            # Imprimimos la descripción (índice 4) que es fácil de verificar
-            print(f" -> Fila {i}: Descripción = '{row_tuple[4]}'")
 
 class ContabilidadWidget(QWidget):
     def __init__(self, controller: ContabilidadController, clientes_logic: ClientesLogic, procesos_logic: ProcesosLogic, user_data: dict = None, parent=None):
