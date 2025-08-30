@@ -158,7 +158,6 @@ class ContabilidadWidget(QWidget):
         self.connect_signals()
 
     def init_ui(self):
-        self.btn_agregar.setStyleSheet("QPushButton { background-color: #6CBF84; color: white; border-radius: 6px; padding: 8px 18px; font-size: 15px; font-weight: 600; border: none; } QPushButton:hover { background-color: #5AA870; } QPushButton:pressed { background-color: #4C8C5D; }")
         self.setStyleSheet("""
             QWidget { background-color: #F8F0F5; color: #333333; font-family: 'Segoe UI', 'Arial', sans-serif; }
             QLabel#mainTitle { color: #D36B92; font-size: 28px; font-weight: bold; padding-bottom: 15px; border-bottom: 1px solid #E0E0E0; margin-bottom: 20px; padding-top: 10px; }
@@ -235,6 +234,7 @@ class ContabilidadWidget(QWidget):
         top_layout.addStretch()
         self.btn_agregar = QPushButton("Agregar")
         self.btn_agregar.setObjectName("btn_agregar")
+        self.btn_agregar.setStyleSheet("QPushButton { background-color: #6CBF84; color: white; border-radius: 6px; padding: 8px 18px; font-size: 15px; font-weight: 600; border: none; } QPushButton:hover { background-color: #5AA870; } QPushButton:pressed { background-color: #4C8C5D; }")
         top_layout.addWidget(self.btn_agregar)
         main_layout.addLayout(top_layout)
 
