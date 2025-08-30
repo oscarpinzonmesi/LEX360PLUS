@@ -95,7 +95,7 @@ class ContabilidadDB:
     def delete_record(self, record_id: int) -> bool:
         """Elimina un registro por su ID."""
         with self.get_session() as session:
-            record = session.query(Contabilidad).get(record_id)
+            record = session.get(Contabilidad, record_id)  # ✅ moderno
             if record:
                 session.delete(record)
                 return True
