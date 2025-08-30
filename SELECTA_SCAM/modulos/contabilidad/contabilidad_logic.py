@@ -40,13 +40,14 @@ class ContabilidadLogic:
             proceso_radicado = rec.proceso.radicado if rec.proceso else "N/A"
             tipo_nombre = rec.tipo.nombre if rec.tipo else "SIN TIPO"
             fecha_str = rec.fecha.strftime("%Y-%m-%d") if isinstance(rec.fecha, (date, datetime)) else str(rec.fecha)
-            display_records.append((rec.id, cliente_nombre, proceso_radicado, tipo_nombre, rec.descripcion, rec.monto, fecha_str))
+            display_records.append((
+                rec.id, cliente_nombre, proceso_radicado, tipo_nombre,
+                rec.descripcion, rec.monto, fecha_str
+            ))
         return display_records
 
     def update_contabilidad_record(self, record_id, cliente_id, proceso_id, tipo_id, descripcion, valor, fecha):
-        self.contabilidad_model.update_contabilidad_record(
-            record_id, cliente_id, proceso_id, tipo_id, descripcion, valor, fecha
-        )
+        self.contabilidad_model.update_contabilidad_record(record_id, cliente_id, proceso_id, tipo_id, descripcion, valor, fecha)
 
     def get_contabilidad_record_raw(self, record_id: int):
         record = self.contabilidad_db.get_record_by_id(record_id)
@@ -56,12 +57,15 @@ class ContabilidadLogic:
         proceso_radicado = record.proceso.radicado if record.proceso else "N/A"
         tipo_nombre = self.tipos_contables_map.get(record.tipo_contable_id, "Desconocido")
         fecha_str = record.fecha.strftime("%Y-%m-%d") if record.fecha else ""
-        return (record.id, cliente_nombre, proceso_radicado, tipo_nombre, record.descripcion, record.monto, fecha_str)
+        return (
+            record.id, cliente_nombre, proceso_radicado, tipo_nombre,
+            record.descripcion, record.monto, fecha_str
+        )
 
     def get_tipos_contables(self):
         return [TipoContable(id=i, nombre=n) for i, n in enumerate([
-            "Ingreso por Servicios", "Gasto Operativo", "Ingreso por Honorarios",
-            "Gasto Administrativo", "Reembolso", "Impuesto", "Nómina",
+            "Ingreso por Servicios", "Gasto Operativo", "Ingreso por Honorarios", 
+            "Gasto Administrativo", "Reembolso", "Impuesto", "Nómina", 
             "Amortización", "Depreciación", "Inversión", "Préstamo", "Intereses"
         ], 1)]
 
