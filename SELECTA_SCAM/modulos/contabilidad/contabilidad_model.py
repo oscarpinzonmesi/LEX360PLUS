@@ -8,11 +8,7 @@ class ContabilidadModel:
         self.contabilidad_db = contabilidad_db
 
     def get_all_contabilidad_records(self, cliente_id: int = None, proceso_id: int = None, search_term: str = None) -> list[Contabilidad]:
-        return self.contabilidad_db.get_filtered_contabilidad_records(
-            cliente_id=cliente_id, 
-            proceso_id=proceso_id, 
-            search_term=search_term
-        )
+        return self.contabilidad_db.get_filtered_contabilidad_records(cliente_id, proceso_id, search_term)
 
     def update_contabilidad_record(self, record_id: int, cliente_id: int, proceso_id: int, tipo_id: int, descripcion: str, valor: float, fecha):
         if isinstance(fecha, str):
@@ -34,22 +30,23 @@ class ContabilidadModel:
         return self.contabilidad_db.get_record_by_id(record_id)
 
     def get_filtered_contabilidad_records(self, cliente_id: Optional[int] = None, proceso_id: Optional[int] = None, search_term: Optional[str] = None) -> list:
-        return self.contabilidad_db.get_filtered_contabilidad_records(
-            cliente_id=cliente_id, 
-            proceso_id=proceso_id,
-            search_term=search_term
-        )
+        return self.contabilidad_db.get_filtered_contabilidad_records(cliente_id=cliente_id, proceso_id=proceso_id, search_term=search_term)
 
     def add_contabilidad_record(self, cliente_id: int, proceso_id: Optional[int], tipo_id: int, descripcion: str, valor: float, fecha: str):
         if isinstance(fecha, str):
             fecha = datetime.strptime(fecha, "%Y-%m-%d").date()
         elif not isinstance(fecha, (date, datetime)):
-            raise TypeError("La fecha debe ser un string en formato YYYY-MM-DD o un objeto date/datetime.")
+            raise TypeError("La fecha debe ser un string YYYY-MM-DD o un objeto date/datetime.")
         with self.contabilidad_db.get_session() as session:
-            self.contabilidad_db.add_contabilidad(
-                session, cliente_id=cliente_id, proceso_id=proceso_id,
-                tipo_id=tipo_id, descripcion=descripcion, valor=valor, fecha=fecha
+            nuevo = Contabilidad(
+                cliente_id=cliente_id,
+                proceso_id=proceso_id,
+                tipo_contable_id=tipo_id,
+                descripcion=descripcion,
+                monto=valor,
+                fecha=fecha
             )
+            session.add(nuevo)
 
     def get_ingreso_types(self):
         with self.contabilidad_db.get_session() as session:
