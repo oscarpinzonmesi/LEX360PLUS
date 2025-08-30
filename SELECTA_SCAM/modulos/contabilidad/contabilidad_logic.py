@@ -153,9 +153,11 @@ class ContabilidadLogic:
 
             # 📌 Nuevo: búsqueda flexible de cliente
             if search_term:
-                if search_term.isdigit():  # Si escriben un número → buscar por ID
+                if search_term.isdigit():
+                    # 🔎 Buscar por ID exacto del cliente
                     query = query.filter(Cliente.id == int(search_term))
-                else:  # Si escriben texto → buscar por nombre
+                else:
+                    # 🔎 Buscar por nombre de cliente
                     query = query.filter(Cliente.nombre.ilike(f"%{search_term}%"))
 
             results = query.all()
