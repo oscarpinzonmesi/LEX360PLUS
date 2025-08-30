@@ -51,12 +51,12 @@ class ContabilidadController(QObject):
     # CRUD + sincronización con tabla
     # -------------------------------
 
-    def get_contabilidad_records_sync(
+   def get_contabilidad_records_sync(
         self,
         cliente_id: int = None,
         proceso_id: int = None,
         search_term: str = None,
-        tipo_id: int = None,
+        tipo_contable_id: int = None,   # 🔄 cambio aquí
     ):
         """
         Recupera registros filtrados, actualiza la tabla y emite el resumen de totales.
@@ -66,7 +66,7 @@ class ContabilidadController(QObject):
                 cliente_id=cliente_id,
                 proceso_id=proceso_id,
                 search_term=search_term,
-                tipo_id=tipo_id,
+                tipo_contable_id=tipo_contable_id,   # 🔄 cambio aquí
             )
             self.data_updated.emit(records)
             self.logger.info(
