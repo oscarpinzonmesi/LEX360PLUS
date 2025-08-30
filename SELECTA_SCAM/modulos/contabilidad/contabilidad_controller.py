@@ -93,17 +93,8 @@ class ContabilidadController(QObject):
             self.logger.exception("Error al cargar registros/resumen")
             self.operation_failed.emit(f"Error al cargar datos y resumen: {str(e)}")
 
-    def add_record(
-        self,
-        cliente_id,
-        proceso_id,
-        tipo_id,
-        descripcion,
-        valor,
-        fecha,
-        current_filter_cliente_id: int = None,
-        current_filter_proceso_id: int = None,
-    ):
+    def add_record(self, cliente_id, proceso_id, tipo_contable_id, descripcion, monto, fecha, ...):
+
         """
         Agrega un registro y refresca la tabla.
         """
