@@ -20,9 +20,15 @@ class ContabilidadLogic:
     # CRUD
     # -------------------------------
 
-    def add_contabilidad_record(self, cliente_id: int, proceso_id: Optional[int],
-                                tipo_contable_id: int, descripcion: str,
-                                monto: float, fecha: date) -> Contabilidad:
+    def add_contabilidad_record(
+        self,
+        cliente_id: int,
+        proceso_id: Optional[int],
+        tipo_contable_id: int,
+        descripcion: str,
+        monto: float,
+        fecha: date,
+    ) -> Contabilidad:
         with self.db_manager() as session:
             record = Contabilidad(
                 cliente_id=cliente_id,
@@ -30,7 +36,7 @@ class ContabilidadLogic:
                 tipo_contable_id=tipo_contable_id,
                 descripcion=descripcion,
                 monto=monto,
-                fecha=fecha
+                fecha=fecha,
             )
             session.add(record)
             session.commit()
@@ -38,10 +44,16 @@ class ContabilidadLogic:
             logger.info(f"ContabilidadLogic: Registro añadido ID={record.id}")
             return record
 
-
-    def update_contabilidad_record(self, record_id: int, cliente_id: int, proceso_id: Optional[int],
-                                   tipo_id: int, descripcion: str,
-                                   valor: float, fecha: date) -> bool:
+    def update_contabilidad_record(
+        self,
+        record_id: int,
+        cliente_id: int,
+        proceso_id: Optional[int],
+        tipo_id: int,
+        descripcion: str,
+        valor: float,
+        fecha: date,
+    ) -> bool:
         with self.db_manager() as session:
             record = session.get(Contabilidad, record_id)
             if not record:
@@ -70,25 +82,28 @@ class ContabilidadLogic:
     # Consultas principales
     # -------------------------------
 
-    def get_contabilidad_data(self, cliente_id: int = None,
-                              proceso_id: int = None) -> List[Tuple]:
+    def get_contabilidad_data(
+        self, cliente_id: int = None, proceso_id: int = None
+    ) -> List[Tuple]:
         """
         Retorna datos crudos para tabla:
         [(id, cliente, proceso, tipo, desc, valor, fecha), ...]
         """
         with self.db_manager() as session:
-            query = session.query(
-                Contabilidad.id,
-                Cliente.nombre,
-                Proceso.radicado,
-                TipoContable.nombre,
-                Contabilidad.descripcion,
-                Contabilidad.monto,
-                Contabilidad.fecha
-            ).join(Cliente, Contabilidad.cliente_id == Cliente.id
-            ).outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id
-            ).join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
-
+            query = (
+                session.query(
+                    Contabilidad.id,
+                    Cliente.nombre,
+                    Proceso.radicado,
+                    TipoContable.nombre,
+                    Contabilidad.descripcion,
+                    Contabilidad.monto,
+                    Contabilidad.fecha,
+                )
+                .join(Cliente, Contabilidad.cliente_id == Cliente.id)
+                .outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id)
+                .join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
+            )
 
             if cliente_id:
                 query = query.filter(Contabilidad.cliente_id == cliente_id)
@@ -96,47 +111,70 @@ class ContabilidadLogic:
                 query = query.filter(Contabilidad.proceso_id == proceso_id)
 
             results = query.all()
-            return [(r[0], r[1], r[2] or "", r[3], r[4], r[5], r[6].strftime("%Y-%m-%d")) for r in results]
+            return [
+                (r[0], r[1], r[2] or "", r[3], r[4], r[5], r[6].strftime("%Y-%m-%d"))
+                for r in results
+            ]
 
-    def get_contabilidad_data_for_display(self, cliente_id: int = None,
-                                          proceso_id: int = None,
-                                          search_term: str = None,
-                                          tipo_id: int = None) -> List[Tuple]:
+    def get_contabilidad_data_for_display(
+        self,
+        cliente_id: int = None,
+        proceso_id: int = None,
+        search_term: str = None,
+        tipo_id: int = None,
+    ) -> List[Tuple]:
         """
         Retorna datos para mostrar en la UI, con filtros extra.
         """
         with self.db_manager() as session:
-            query = session.query(
-                Contabilidad.id,
-                Cliente.nombre,
-                Proceso.radicado,
-                TipoContable.nombre,
-                Contabilidad.descripcion,
-                Contabilidad.monto,
-                Contabilidad.fecha
-            ).join(Cliente, Contabilidad.cliente_id == Cliente.id
-            ).outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id
-            ).join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
-
+            query = (
+                session.query(
+                    Contabilidad.id,
+                    Cliente.nombre,
+                    Proceso.radicado,
+                    TipoContable.nombre,
+                    Contabilidad.descripcion,
+                    Contabilidad.monto,
+                    Contabilidad.fecha,
+                )
+                .join(Cliente, Contabilidad.cliente_id == Cliente.id)
+                .outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id)
+                .join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
+            )
 
             if cliente_id:
                 query = query.filter(Contabilidad.cliente_id == cliente_id)
             if proceso_id:
                 query = query.filter(Contabilidad.proceso_id == proceso_id)
             if tipo_id:
-                query = query.filter(Contabilidad.tipo_id == tipo_id)
+                query = query.filter(Contabilidad.tipo_contable_id == tipo_contable_id)
+
             if search_term:
                 query = query.filter(Contabilidad.descripcion.ilike(f"%{search_term}%"))
 
             results = query.all()
-            return [(r[0], r[1], r[2] or "", r[3], r[4], float(r[5]), r[6].strftime("%Y-%m-%d")) for r in results]
+            return [
+                (
+                    r[0],
+                    r[1],
+                    r[2] or "",
+                    r[3],
+                    r[4],
+                    float(r[5]),
+                    r[6].strftime("%Y-%m-%d"),
+                )
+                for r in results
+            ]
 
-    def get_summary_data(self, cliente_id=None, proceso_id=None,
-                         search_term=None, tipo_id=None) -> Dict[str, float]:
+    def get_summary_data(
+        self, cliente_id=None, proceso_id=None, search_term=None, tipo_id=None
+    ) -> Dict[str, float]:
         """
         Calcula totales de ingresos y gastos con filtros.
         """
-        records = self.get_contabilidad_data_for_display(cliente_id, proceso_id, search_term, tipo_id)
+        records = self.get_contabilidad_data_for_display(
+            cliente_id, proceso_id, search_term, tipo_id
+        )
         total_ingresos, total_gastos = 0.0, 0.0
         for rec in records:
             valor = rec[5]
@@ -148,7 +186,7 @@ class ContabilidadLogic:
         return {
             "total_ingresos": total_ingresos,
             "total_gastos": total_gastos,
-            "saldo": total_ingresos - total_gastos
+            "saldo": total_ingresos - total_gastos,
         }
 
     # -------------------------------
@@ -160,45 +198,65 @@ class ContabilidadLogic:
         Obtiene un solo registro formateado para edición.
         """
         with self.db_manager() as session:
-            query = session.query(
-                Contabilidad.id,
-                Cliente.nombre,
-                Proceso.radicado,
-                TipoContable.nombre,
-                Contabilidad.descripcion,
-                Contabilidad.monto,
-                Contabilidad.fecha
-            ).join(Cliente, Contabilidad.cliente_id == Cliente.id
-            ).outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id
-            ).join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
-
+            query = (
+                session.query(
+                    Contabilidad.id,
+                    Cliente.nombre,
+                    Proceso.radicado,
+                    TipoContable.nombre,
+                    Contabilidad.descripcion,
+                    Contabilidad.monto,
+                    Contabilidad.fecha,
+                )
+                .join(Cliente, Contabilidad.cliente_id == Cliente.id)
+                .outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id)
+                .join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
+            )
 
             if not rec:
                 return None
-            return (rec[0], rec[1], rec[2] or "", rec[3], rec[4],
-                    float(rec[5]), rec[6].strftime("%Y-%m-%d"))
+            return (
+                rec[0],
+                rec[1],
+                rec[2] or "",
+                rec[3],
+                rec[4],
+                float(rec[5]),
+                rec[6].strftime("%Y-%m-%d"),
+            )
 
     def get_records_by_ids(self, record_ids: List[int]) -> List[Tuple]:
         """
         Obtiene varios registros por IDs.
         """
         with self.db_manager() as session:
-            query = session.query(
-                Contabilidad.id,
-                Cliente.nombre,
-                Proceso.radicado,
-                TipoContable.nombre,
-                Contabilidad.descripcion,
-                Contabilidad.monto,
-                Contabilidad.fecha
-            ).join(Cliente, Contabilidad.cliente_id == Cliente.id
-            ).outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id
-            ).join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
+            query = (
+                session.query(
+                    Contabilidad.id,
+                    Cliente.nombre,
+                    Proceso.radicado,
+                    TipoContable.nombre,
+                    Contabilidad.descripcion,
+                    Contabilidad.monto,
+                    Contabilidad.fecha,
+                )
+                .join(Cliente, Contabilidad.cliente_id == Cliente.id)
+                .outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id)
+                .join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
+            )
 
-
-
-            return [(r[0], r[1], r[2] or "", r[3], r[4],
-                     float(r[5]), r[6].strftime("%Y-%m-%d")) for r in results]
+            return [
+                (
+                    r[0],
+                    r[1],
+                    r[2] or "",
+                    r[3],
+                    r[4],
+                    float(r[5]),
+                    r[6].strftime("%Y-%m-%d"),
+                )
+                for r in results
+            ]
 
     def get_tipos_contables(self) -> List[TipoContable]:
         """
@@ -212,5 +270,7 @@ class ContabilidadLogic:
         Retorna procesos asociados a un cliente.
         """
         with self.db_manager() as session:
-            procesos = session.query(Proceso).filter(Proceso.cliente_id == cliente_id).all()
+            procesos = (
+                session.query(Proceso).filter(Proceso.cliente_id == cliente_id).all()
+            )
             return [(p.id, p.radicado) for p in procesos]
