@@ -125,7 +125,12 @@ class ContabilidadLogic:
     ) -> List[Tuple]:
         """
         Retorna datos para mostrar en la UI, con filtros extra.
-        Permite buscar por cliente_id exacto o por nombre de cliente.
+        - Filtra por cliente_id (combo normal)
+        - Filtra por proceso_id
+        - Filtra por tipo_contable_id
+        - search_term:
+            * numérico → busca por Contabilidad.id
+            * texto    → busca por Cliente.nombre
         """
         with self.db_manager() as session:
             query = (
@@ -144,20 +149,20 @@ class ContabilidadLogic:
             )
 
             # 📌 Filtros directos
-            if cliente_id:
+            if cliente_id and not search_term:  # se ignora si hay búsqueda
                 query = query.filter(Contabilidad.cliente_id == cliente_id)
             if proceso_id:
                 query = query.filter(Contabilidad.proceso_id == proceso_id)
             if tipo_contable_id:
                 query = query.filter(Contabilidad.tipo_contable_id == tipo_contable_id)
 
-            # 📌 Nuevo: búsqueda flexible de cliente
+            # 📌 Nuevo: búsqueda flexible
             if search_term:
                 if search_term.isdigit():
-                    # 🔎 Buscar por ID exacto del cliente
-                    query = query.filter(Cliente.id == int(search_term))
+                    # 🔎 Si es número → buscar por ID del registro contable
+                    query = query.filter(Contabilidad.id == int(search_term))
                 else:
-                    # 🔎 Buscar por nombre de cliente
+                    # 🔎 Si es texto → buscar por nombre del cliente
                     query = query.filter(Cliente.nombre.ilike(f"%{search_term}%"))
 
             results = query.all()
@@ -165,7 +170,7 @@ class ContabilidadLogic:
             # 📌 Preparar resultados para la tabla
             return [
                 (
-                    r[0],  # ID
+                    r[0],  # Contabilidad.id
                     r[1],  # Cliente.nombre
                     r[2] or "",  # Proceso.radicado (puede ser None)
                     r[3],  # TipoContable.nombre
