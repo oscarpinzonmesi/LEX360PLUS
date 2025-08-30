@@ -29,7 +29,7 @@ class ContabilidadLogic:
                 proceso_id=proceso_id,
                 tipo_id=tipo_id,
                 descripcion=descripcion,
-                valor=valor,
+                monto=valor,
                 fecha=fecha
             )
             session.add(record)
@@ -49,7 +49,7 @@ class ContabilidadLogic:
             record.proceso_id = proceso_id
             record.tipo_id = tipo_id
             record.descripcion = descripcion
-            record.valor = valor
+            record.monto = valor
             record.fecha = fecha
             session.commit()
             logger.info(f"ContabilidadLogic: Registro actualizado ID={record_id}")
@@ -82,7 +82,7 @@ class ContabilidadLogic:
                 Proceso.radicado,
                 TipoContable.nombre,
                 Contabilidad.descripcion,
-                Contabilidad.valor,
+                Contabilidad.monto,
                 Contabilidad.fecha
             ).join(Cliente, Cliente.id == Contabilidad.cliente_id
             ).outerjoin(Proceso, Proceso.id == Contabilidad.proceso_id
@@ -110,7 +110,7 @@ class ContabilidadLogic:
                 Proceso.radicado,
                 TipoContable.nombre,
                 Contabilidad.descripcion,
-                Contabilidad.valor,
+                Contabilidad.monto,
                 Contabilidad.fecha
             ).join(Cliente
             ).outerjoin(Proceso
@@ -163,7 +163,7 @@ class ContabilidadLogic:
                 Proceso.radicado,
                 TipoContable.nombre,
                 Contabilidad.descripcion,
-                Contabilidad.valor,
+                Contabilidad.monto,
                 Contabilidad.fecha
             ).join(Cliente
             ).outerjoin(Proceso
@@ -186,7 +186,7 @@ class ContabilidadLogic:
                 Proceso.radicado,
                 TipoContable.nombre,
                 Contabilidad.descripcion,
-                Contabilidad.valor,
+                Contabilidad.monto,
                 Contabilidad.fecha
             ).join(Cliente
             ).outerjoin(Proceso
