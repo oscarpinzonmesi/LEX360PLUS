@@ -2,7 +2,8 @@ import logging
 from datetime import date, datetime
 from typing import List, Optional, Tuple, Dict
 
-from SELECTA_SCAM.db.db_manager import get_session
+from SELECTA_SCAM.utils.db_manager import get_db_session
+
 from SELECTA_SCAM.db.models import Contabilidad, Cliente, Proceso, TipoContable
 
 logger = logging.getLogger(__name__)
