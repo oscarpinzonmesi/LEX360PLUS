@@ -199,24 +199,38 @@ class ContabilidadController(QObject):
             self.operation_failed.emit(f"Error inesperado al actualizar registro: {e}")
             return False
 
-    def add_record(
-        self, cliente_id, proceso_id, tipo_contable_id, descripcion, monto, fecha
+    def delete_record(
+        self,
+        record_id,
+        current_filter_cliente_id: int = None,
+        current_filter_proceso_id: int = None,
     ):
+        ##logger.info(f"ContabilidadController: Solicitando eliminar registro ID {record_id}.")
         try:
-            self.contabilidad_logic.add_contabilidad_record(
-                cliente_id=cliente_id,
-                proceso_id=proceso_id,
-                tipo_contable_id=tipo_contable_id,
-                descripcion=descripcion,
-                monto=monto,
-                fecha=fecha,
+            self.contabilidad_logic.delete_contabilidad_record(record_id)
+            self.get_contabilidad_records_sync(
+                cliente_id=current_filter_cliente_id,
+                proceso_id=current_filter_proceso_id,
             )
-            self.load_records()  # recargar tabla/resumen
+            # logger.info(f"ContabilidadController: Registro ID {record_id} eliminado. Señal data_updated emitida.")
+            self.operation_successful.emit(
+                f"Registro ID {record_id} eliminado exitosamente."
+            )
+            return True
+        except ValueError as ve:
+            self.error_occurred.emit(str(ve))
+            logger.warning(
+                f"ContabilidadController: Error de validación al eliminar registro: {ve}"
+            )
+            self.operation_failed.emit(f"Fallo al eliminar registro: {ve}")
+            return False
         except Exception as e:
-            logger.error("Error inesperado al añadir registro", exc_info=True)
-            QMessageBox.critical(
-                None, "Error", f"Error inesperado al añadir registro: {e}"
+            self.error_occurred.emit(f"Error al eliminar registro: {e}")
+            logger.exception(
+                f"ContabilidadController: Error inesperado al eliminar registro ID {record_id}."
             )
+            self.operation_failed.emit(f"Error inesperado al eliminar registro: {e}")
+            return False
 
     def get_summary_data(
         self,
