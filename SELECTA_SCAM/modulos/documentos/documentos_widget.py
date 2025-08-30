@@ -1695,11 +1695,9 @@ class DocumentosModule(QWidget):
         # Si no hay selección en combo, intentamos con el campo de texto
         if cliente_id_from_combo is None and cliente_input_text:
             try:
-                # Si es un número → cliente_id
                 potential_cliente_id = int(cliente_input_text)
                 final_cliente_id_filter = potential_cliente_id
             except ValueError:
-                # Si es texto → nombre del cliente
                 final_cliente_nombre_filter = cliente_input_text
 
         combined_doc_search_text = self.search_doc_input.text().strip()
@@ -1709,13 +1707,13 @@ class DocumentosModule(QWidget):
 
         if combined_doc_search_text:
             try:
-                # Si es número → lo tratamos como ID del documento
                 potential_doc_id = int(combined_doc_search_text)
                 final_documento_id_filter = potential_doc_id
             except ValueError:
-                # Si no es número → se busca por nombre del documento
                 final_nombre_doc_filter = combined_doc_search_text
-                logger.info(f"Texto de búsqueda de documento '{combined_doc_search_text}' no es un ID numérico. Se buscará por nombre.")
+                logger.info(
+                    f"Texto de búsqueda de documento '{combined_doc_search_text}' no es un ID numérico. Se buscará por nombre."
+                )
 
         tipo_documento_filtro = self.search_tipo_doc_combo.currentText()
         if tipo_documento_filtro == "Todos":
@@ -1733,7 +1731,7 @@ class DocumentosModule(QWidget):
             f"mostrando_papelera={mostrando_papelera_actual}"
         )
 
-        # ⛔ Evitar búsquedas desfasadas si el modo cambió (ej. acabamos de salir de papelera)
+        # ⛔ Evitar búsquedas desfasadas si el modo cambió
         if mostrando_papelera_actual != self.mostrando_papelera:
             return
 
@@ -1745,7 +1743,7 @@ class DocumentosModule(QWidget):
                 documento_id_filtro=final_documento_id_filter,
                 tipo_documento_filtro=tipo_documento_filtro,
                 mostrando_papelera=mostrando_papelera_actual
-            ) or []   # ⚠️ asegurar lista
+            ) or []
 
             logger.info(f"Controlador devolvió {len(documentos_obtenidos)} documentos.")
             print(f"DEBUG: Controlador devolvió {len(documentos_obtenidos)} documentos.")
@@ -1753,7 +1751,6 @@ class DocumentosModule(QWidget):
             self.update_document_table(documentos_obtenidos)
 
             if not documentos_obtenidos:
-                # ⚠️ Mensajes de estado de la tabla
                 self.tabla_documentos.setVisible(False)
                 if mostrando_papelera_actual:
                     self.empty_table_label.setText("La papelera está vacía.")
@@ -1783,6 +1780,15 @@ class DocumentosModule(QWidget):
                 self.btn_cancelar_edicion.setVisible(False)
                 self.doc_id_label.setVisible(False)
                 self.doc_id_display.setVisible(False)
+
+                if not documentos_obtenidos:
+                    self.tabla_documentos.setVisible(False)
+                    self.empty_table_label.setText("La papelera está vacía.")
+                    self.empty_table_label.setVisible(True)
+                else:
+                    self.tabla_documentos.setVisible(True)
+                    self.empty_table_label.setVisible(False)
+
             else:  # Documentos activos
                 self.btn_restaurar.setVisible(False)
                 self.btn_eliminar_definitivo.setVisible(False)
@@ -1799,10 +1805,29 @@ class DocumentosModule(QWidget):
 
                 if not self.is_editing:
                     self.label_ruta_archivo.setVisible(False)
-                    self.archivo_path_displa
+                    self.archivo_path_display.setVisible(False)
+                    self.btn_editar.setVisible(False)
+                    self.btn_cancelar_edicion.setVisible(False)
+                    self.doc_id_label.setVisible(False)
+                    self.doc_id_display.setVisible(False)
+
+                if not documentos_obtenidos:
+                    self.tabla_documentos.setVisible(False)
+                    self.empty_table_label.setText("No hay documentos disponibles. ¡Agrega uno nuevo!")
+                    self.empty_table_label.setVisible(True)
+                else:
+                    self.tabla_documentos.setVisible(True)
+                    self.empty_table_label.setVisible(False)
+
+            self.update_action_buttons_state()
+
+        except Exception as e:
+            logger.error(f"Error al ejecutar búsqueda en el controlador: {e}")
+            self.mostrar_error("Error de Búsqueda", f"No se pudieron cargar los documentos: {e}")
 
     def limpiar_filtros_busqueda(self):
         self.logger.info("Limpiando todos los filtros de búsqueda...") # Añadí este log para trazar
+
         # Limpiar los campos de entrada de texto (parte de los filtros de la tabla)
         self.cliente_search_input.clear() # Esto limpia el input de búsqueda de cliente para los filtros
         self.search_doc_input.clear() # Asegura que el campo unificado se limpia
