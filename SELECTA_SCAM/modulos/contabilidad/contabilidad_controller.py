@@ -83,29 +83,21 @@ class ContabilidadController(QObject):
             self.logger.exception("Error al cargar registros/resumen")
             self.operation_failed.emit(f"Error al cargar datos y resumen: {str(e)}")
 
-    def add_record(self, cliente_id, proceso_id, tipo_id, descripcion, valor, fecha,
-                   current_filter_cliente_id: int = None, current_filter_proceso_id: int = None):
-        """
-        Agrega un registro y refresca la tabla.
-        """
+    def add_record(self, cliente_id, proceso_id, tipo_contable_id, descripcion, monto, fecha):
         try:
             self.contabilidad_logic.add_contabilidad_record(
-                cliente_id, proceso_id, tipo_id, descripcion, valor, fecha
+                cliente_id=cliente_id,
+                proceso_id=proceso_id,
+                tipo_contable_id=tipo_contable_id,
+                descripcion=descripcion,
+                monto=monto,
+                fecha=fecha
             )
-            self.get_contabilidad_records_sync(
-                cliente_id=current_filter_cliente_id,
-                proceso_id=current_filter_proceso_id
-            )
-            self.operation_successful.emit("¡Registro de contabilidad añadido exitosamente!")
-            return True
-        except ValueError as ve:
-            self.error_occurred.emit(str(ve))
-            self.operation_failed.emit(f"Fallo al añadir registro: {ve}")
-            return False
+            self.load_records()  # recargar tabla/resumen
         except Exception as e:
-            self.logger.exception("Error inesperado al añadir registro")
-            self.operation_failed.emit(f"Error inesperado al añadir registro: {e}")
-            return False
+            logger.error("Error inesperado al añadir registro", exc_info=True)
+            QMessageBox.critical(None, "Error", f"Error inesperado al añadir registro: {e}")
+
 
     def update_record(self, record_id, cliente_id, proceso_id, tipo_id, descripcion, valor, fecha):
         """
