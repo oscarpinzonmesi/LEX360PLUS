@@ -1,13 +1,11 @@
-# SELECTA_SCAM/modulos/contabilidad/contabilidad_logic.py
-
 from datetime import date, datetime
 from typing import Optional
 from dataclasses import dataclass
-
 from .contabilidad_db import ContabilidadDB
 from .contabilidad_model import ContabilidadModel
 from ..clientes.clientes_logic import ClientesLogic
 from ..procesos.procesos_logic import ProcesosLogic
+from ...db.models import Contabilidad
 
 @dataclass
 class TipoContable:
