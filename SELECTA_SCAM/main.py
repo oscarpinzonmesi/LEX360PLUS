@@ -146,43 +146,37 @@ class MainApp(QMainWindow):
             }
         """
 
-                # --- INICIO DE LA CORRECCIÓN DE ARQUITECTURA ---
+        # --- INICIO DE LA CORRECCIÓN DE ARQUITECTURA ---
 
-        # 1. Instancias de la capa de Base de Datos (DB) - ya no necesitan argumentos
+        # 1. Instancias de la capa de Base de Datos (DB)
         self.clientes_db_instance = ClientesDB()
         self.documentos_db_instance = DocumentosDB()
         self.procesos_db_instance = ProcesosDB()
-        self.contabilidad_db_instance = ContabilidadDB()
         self.calendario_db_instance = CalendarioDB()
         self.liquidadores_db_instance = LiquidadoresDB()
         self.usuarios_db_instance = UsuariosDB()
 
-        # 2. Instancias de la capa de Lógica - se les "inyecta" la capa de DB que necesitan
+        # 2. Instancias de la capa de Lógica
         self.clientes_logic_instance = ClientesLogic(self.clientes_db_instance)
         self.procesos_logic_instance = ProcesosLogic(self.procesos_db_instance)
-        # (La lógica de Documentos, si la tienes, iría aquí)
+        # ContabilidadLogic ya no requiere contabilidad_db ni contabilidad_model
+        self.contabilidad_logic_instance = ContabilidadLogic()
 
-        # 3. Instancias de la capa de Modelo - se les "inyecta" la lógica o la DB
+        # 3. Instancias de la capa de Modelo
         self.clientes_model_instance = ClientesModel(self.clientes_logic_instance, self)
         self.procesos_model_instance = ProcesosModel(
-            self.procesos_db_instance, 
-            clientes_db=self.clientes_db_instance # ProcesosModel necesita acceso directo a ClientesDB
+            self.procesos_db_instance,
+            clientes_db=self.clientes_db_instance
         )
-        self.contabilidad_model_instance = ContabilidadModel(self.contabilidad_db_instance)
 
-        # 4. Instancias de Controladores (si se usan, como en Contabilidad)
-        self.contabilidad_logic_instance = ContabilidadLogic(
-            contabilidad_db=self.contabilidad_db_instance,
-            clientes_logic=self.clientes_logic_instance,
-            contabilidad_model=self.contabilidad_model_instance,
-            procesos_logic=self.procesos_logic_instance
-        )
+        # 4. Instancias de Controladores
         self.contabilidad_controller_instance = ContabilidadController(
-            model=self.contabilidad_model_instance,
+            model=None,  # Puedes pasar None, ya que la lógica hace todo el trabajo
             contabilidad_logic=self.contabilidad_logic_instance,
             clientes_logic=self.clientes_logic_instance,
             procesos_logic=self.procesos_logic_instance
         )
+
         # --- FIN DE LA CORRECCIÓN DE ARQUITECTURA ---
         self.procesos_model_instance = ProcesosModel(
             self.procesos_db_instance, 
