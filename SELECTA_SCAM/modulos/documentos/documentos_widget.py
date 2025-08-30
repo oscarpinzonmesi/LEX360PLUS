@@ -1803,7 +1803,6 @@ class DocumentosModule(QWidget):
 
     def limpiar_filtros_busqueda(self):
         self.logger.info("Limpiando todos los filtros de búsqueda...") # Añadí este log para trazar
-
         # Limpiar los campos de entrada de texto (parte de los filtros de la tabla)
         self.cliente_search_input.clear() # Esto limpia el input de búsqueda de cliente para los filtros
         self.search_doc_input.clear() # Asegura que el campo unificado se limpia
