@@ -1,102 +1,96 @@
 # SELECTA_SCAM/modulos/contabilidad/contabilidad_db.py
 
-import logging
-from contextlib import contextmanager
-from sqlalchemy.orm import joinedload
-from sqlalchemy import func, or_
+from sqlalchemy.exc import SQLAlchemyError
+from SELECTA_SCAM.utils.db_manager import get_session
+from SELECTA_SCAM.db.base import Base
+from SELECTA_SCAM.db.models import AsientoContable, CuentaContable  # ajusta según tus modelos
 
-# --- INICIO DE CORRECCIONES ---
-# Importaciones del nuevo sistema unificado
-from ...db.models import Contabilidad, Cliente, Proceso
-from ...utils.db_manager import get_db_session
-# --- FIN DE CORRECCIONES ---
-
-logger = logging.getLogger(__name__)
 
 class ContabilidadDB:
+    """
+    Clase encargada de la lógica de acceso a datos para el módulo de contabilidad.
+    Ahora centralizada con db_manager (sin duplicar engine ni Session).
+    """
+
     def __init__(self):
-        """El constructor ya no necesita argumentos."""
-        self.logger = logger
+        pass  # no necesitamos engine ni session aquí, todo pasa por get_session()
 
-    @contextmanager
-    def get_session(self):
-        """
-        Usa la sesión global del db_manager para garantizar una única conexión.
-        Se encarga de guardar (commit) los cambios al salir sin errores.
-        """
-        session = get_db_session()
+    # -------------------------------
+    # 📌 Métodos CRUD de CuentaContable
+    # -------------------------------
+    def add_cuenta(self, cuenta_data: dict):
         try:
-            yield session
-            session.commit()
-        except Exception as e:
-            self.logger.error("Error en transacción de ContabilidadDB, haciendo rollback: %s", e, exc_info=True)
-            session.rollback()
-            raise
-        finally:
-            session.close()
+            with get_session() as session:
+                nueva_cuenta = CuentaContable(**cuenta_data)
+                session.add(nueva_cuenta)
+                session.commit()
+                session.refresh(nueva_cuenta)
+                return nueva_cuenta
+        except SQLAlchemyError as e:
+            raise Exception(f"Error al agregar cuenta: {e}")
 
-    def get_filtered_contabilidad_records(self, cliente_id=None, proceso_id=None, search_term=None, tipo_id=None):
-        """Obtiene una lista de registros de contabilidad con filtros."""
-        with self.get_session() as session:
-            session.expire_all() # Fuerza la lectura de datos frescos de la DB
-            
-            query = session.query(Contabilidad).options(
-                joinedload(Contabilidad.cliente),
-                joinedload(Contabilidad.proceso),
-                joinedload(Contabilidad.tipo)
-            )
+    def get_cuenta(self, cuenta_id: int):
+        try:
+            with get_session() as session:
+                return session.get(CuentaContable, cuenta_id)
+        except SQLAlchemyError as e:
+            raise Exception(f"Error al obtener cuenta: {e}")
 
-            if cliente_id:
-                query = query.filter(Contabilidad.cliente_id == cliente_id)
-            if proceso_id:
-                query = query.filter(Contabilidad.proceso_id == proceso_id)
-            if tipo_id:
-                query = query.filter(Contabilidad.tipo_contable_id == tipo_id)
-                
-            if search_term:
-                search_pattern = f"%{search_term.lower()}%"
-                try:
-                    record_id_int = int(search_term)
-                    query = query.filter(
-                        or_(
-                            Contabilidad.id == record_id_int,
-                            func.lower(Contabilidad.descripcion).like(search_pattern),
-                            func.lower(Cliente.nombre).like(search_pattern)
-                        )
-                    )
-                except ValueError:
-                    query = query.filter(
-                        or_(
-                            func.lower(Contabilidad.descripcion).like(search_pattern),
-                            func.lower(Cliente.nombre).like(search_pattern)
-                        )
-                    )
+    def list_cuentas(self):
+        try:
+            with get_session() as session:
+                return session.query(CuentaContable).all()
+        except SQLAlchemyError as e:
+            raise Exception(f"Error al listar cuentas: {e}")
 
-            return query.order_by(Contabilidad.fecha.desc()).all()
+    def delete_cuenta(self, cuenta_id: int):
+        try:
+            with get_session() as session:
+                cuenta = session.get(CuentaContable, cuenta_id)
+                if cuenta:
+                    session.delete(cuenta)
+                    session.commit()
+                    return True
+                return False
+        except SQLAlchemyError as e:
+            raise Exception(f"Error al eliminar cuenta: {e}")
 
-    def get_contabilidad_records_by_ids(self, record_ids: list):
-        """Obtiene registros específicos por una lista de IDs."""
-        with self.get_session() as session:
-            records = session.query(Contabilidad).filter(Contabilidad.id.in_(record_ids)).options(
-                joinedload(Contabilidad.cliente),
-                joinedload(Contabilidad.proceso)
-            ).all()
-            return records
+    # -------------------------------
+    # 📌 Métodos CRUD de AsientoContable
+    # -------------------------------
+    def add_asiento(self, asiento_data: dict):
+        try:
+            with get_session() as session:
+                nuevo_asiento = AsientoContable(**asiento_data)
+                session.add(nuevo_asiento)
+                session.commit()
+                session.refresh(nuevo_asiento)
+                return nuevo_asiento
+        except SQLAlchemyError as e:
+            raise Exception(f"Error al agregar asiento: {e}")
 
-    def get_record_by_id(self, record_id: int):
-        """Obtiene un único registro por su ID."""
-        with self.get_session() as session:
-            record = session.query(Contabilidad).options(
-                joinedload(Contabilidad.cliente),
-                joinedload(Contabilidad.proceso)
-            ).filter(Contabilidad.id == record_id).first()
-            return record
+    def get_asiento(self, asiento_id: int):
+        try:
+            with get_session() as session:
+                return session.get(AsientoContable, asiento_id)
+        except SQLAlchemyError as e:
+            raise Exception(f"Error al obtener asiento: {e}")
 
-    def delete_record(self, record_id: int) -> bool:
-        """Elimina un registro por su ID."""
-        with self.get_session() as session:
-            record = session.query(Contabilidad).get(record_id)
-            if record:
-                session.delete(record)
-                return True
-            return False
+    def list_asientos(self):
+        try:
+            with get_session() as session:
+                return session.query(AsientoContable).all()
+        except SQLAlchemyError as e:
+            raise Exception(f"Error al listar asientos: {e}")
+
+    def delete_asiento(self, asiento_id: int):
+        try:
+            with get_session() as session:
+                asiento = session.get(AsientoContable, asiento_id)
+                if asiento:
+                    session.delete(asiento)
+                    session.commit()
+                    return True
+                return False
+        except SQLAlchemyError as e:
+            raise Exception(f"Error al eliminar asiento: {e}")
