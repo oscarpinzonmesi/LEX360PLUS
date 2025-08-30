@@ -232,6 +232,10 @@ class ContabilidadController(QObject):
             self.operation_failed.emit(f"Error inesperado al eliminar registro: {e}")
             return False
 
+
+def prueba(x, y):
+    return x + y * 2
+
     def get_summary_data(
         self,
         cliente_id: int = None,
