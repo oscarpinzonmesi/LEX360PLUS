@@ -1644,7 +1644,6 @@ class DocumentosModule(QWidget):
         final_cliente_id_filter = cliente_id_from_combo
         final_cliente_nombre_filter = ""
 
-        # Si no hay selección en combo, intentamos con el campo de texto
         if cliente_id_from_combo is None and cliente_input_text:
             try:
                 potential_cliente_id = int(cliente_input_text)
@@ -1663,16 +1662,13 @@ class DocumentosModule(QWidget):
                 final_documento_id_filter = potential_doc_id
             except ValueError:
                 final_nombre_doc_filter = combined_doc_search_text
-                logger.info(
-                    f"Texto de búsqueda de documento '{combined_doc_search_text}' no es un ID numérico. Se buscará por nombre."
-                )
+                logger.info(f"Texto de búsqueda de documento '{combined_doc_search_text}' no es un ID numérico. Se buscará por nombre.")
 
         tipo_documento_filtro = self.search_tipo_doc_combo.currentText()
         if tipo_documento_filtro == "Todos":
             tipo_documento_filtro = None
 
         mostrando_papelera_actual = self.mostrando_papelera
-        print(f"DEBUG: Valor de self.mostrando_papelera (interno) para la búsqueda: {mostrando_papelera_actual}")
 
         logger.info(
             f"FILTROS FINALES enviados al controlador (unificado): "
@@ -1698,26 +1694,31 @@ class DocumentosModule(QWidget):
             ) or []
 
             logger.info(f"Controlador devolvió {len(documentos_obtenidos)} documentos.")
-            print(f"DEBUG: Controlador devolvió {len(documentos_obtenidos)} documentos.")
-
             self.update_document_table(documentos_obtenidos)
 
+            # Mensaje de tabla
             if not documentos_obtenidos:
                 self.tabla_documentos.setVisible(False)
-                if mostrando_papelera_actual:
-                    self.empty_table_label.setText("La papelera está vacía.")
-                else:
-                    self.empty_table_label.setText("No se encontraron documentos para ese cliente.")
+                self.empty_table_label.setText("La papelera está vacía." if mostrando_papelera_actual else "No se encontraron documentos para ese cliente.")
                 self.empty_table_label.setVisible(True)
             else:
                 self.tabla_documentos.setVisible(True)
                 self.empty_table_label.setVisible(False)
 
             if mostrando_papelera_actual:
+                # Botones visibles en PAPELERA
                 self.btn_restaurar.setVisible(True)
                 self.btn_eliminar_definitivo.setVisible(True)
                 self.btn_papelera.setText("Ver Documentos Activos")
                 self.btn_papelera.setToolTip("Haz clic para ver los documentos activos.")
+
+                # Ocultar los que NO deben verse en papelera
+                if hasattr(self, 'btn_enviar_papelera'):
+                    self.btn_enviar_papelera.setVisible(False)
+                if hasattr(self, 'btn_editar_seleccion'):
+                    self.btn_editar_seleccion.setVisible(False)
+
+                # Ocultar controles de carga/edición
                 self.btn_seleccionar_archivo.setVisible(False)
                 self.btn_agregar.setVisible(False)
                 self.main_load_docs_label.setVisible(False)
@@ -1733,19 +1734,24 @@ class DocumentosModule(QWidget):
                 self.doc_id_label.setVisible(False)
                 self.doc_id_display.setVisible(False)
 
+                # Si quedó vacía, regresar automáticamente
                 if not documentos_obtenidos:
-                    self.tabla_documentos.setVisible(False)
-                    self.empty_table_label.setText("La papelera está vacía.")
-                    self.empty_table_label.setVisible(True)
-                else:
-                    self.tabla_documentos.setVisible(True)
-                    self.empty_table_label.setVisible(False)
+                    logger.info("Papelera vacía → retornando a Documentos Activos.")
+                    self.mostrar_documentos_activos()
+                    return
 
-            else:  # Documentos activos
+            else:
+                # Botones visibles en ACTIVOS
                 self.btn_restaurar.setVisible(False)
                 self.btn_eliminar_definitivo.setVisible(False)
                 self.btn_papelera.setText("Ver Papelera")
                 self.btn_papelera.setToolTip("Haz clic para ver los documentos enviados a la papelera.")
+                if hasattr(self, 'btn_enviar_papelera'):
+                    self.btn_enviar_papelera.setVisible(True)
+                if hasattr(self, 'btn_editar_seleccion'):
+                    self.btn_editar_seleccion.setVisible(True)
+
+                # Controles de carga
                 self.btn_seleccionar_archivo.setVisible(True)
                 self.btn_agregar.setVisible(True)
                 self.main_load_docs_label.setVisible(True)
@@ -1762,14 +1768,6 @@ class DocumentosModule(QWidget):
                     self.btn_cancelar_edicion.setVisible(False)
                     self.doc_id_label.setVisible(False)
                     self.doc_id_display.setVisible(False)
-
-                if not documentos_obtenidos:
-                    self.tabla_documentos.setVisible(False)
-                    self.empty_table_label.setText("No hay documentos disponibles. ¡Agrega uno nuevo!")
-                    self.empty_table_label.setVisible(True)
-                else:
-                    self.tabla_documentos.setVisible(True)
-                    self.empty_table_label.setVisible(False)
 
             self.update_action_buttons_state()
 
