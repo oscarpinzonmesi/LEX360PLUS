@@ -169,7 +169,7 @@ class ContabilidadWidget(QWidget):
             QHeaderView::section:horizontal { border-right: 1px solid #F0F0F0; }
             QHeaderView::section:last { border-right: none; }
             QLabel#CustomTooltip { background-color: #333333; color: white; border: 1px solid #5D566F; border-radius: 5px; padding: 5px 10px; font-size: 20px; font-weight: bold; }
-            QPushButton { background-color: #6CBF84; color: white; border-radius: 6px; padding: 12px 25px; font-size: 20px; font-weight: 600; border: none; outline: none; }
+            QPushButton { background-color: #4AA3C0; color: white; border-radius: 6px; padding: 12px 25px; font-size: 20px; font-weight: 600; border: none; outline: none; } QPushButton:hover { background-color: #3C8AA3; } QPushButton:pressed { background-color: #327589; }
             QPushButton:hover { background-color: #7B718D; }
             QPushButton:pressed { background-color: #4A445C; }
             QPushButton:disabled { background-color: #B0B0B0; color: #DDDDDD; }
