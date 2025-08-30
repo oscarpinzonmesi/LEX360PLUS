@@ -84,9 +84,10 @@ class ContabilidadLogic:
                 Contabilidad.descripcion,
                 Contabilidad.monto,
                 Contabilidad.fecha
-            ).join(Cliente, Cliente.id == Contabilidad.cliente_id
-            ).outerjoin(Proceso, Proceso.id == Contabilidad.proceso_id
-            ).join(TipoContable, TipoContable.id == Contabilidad.tipo_id)
+            ).join(Cliente, Contabilidad.cliente_id == Cliente.id
+            ).outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id
+            ).join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
+
 
             if cliente_id:
                 query = query.filter(Contabilidad.cliente_id == cliente_id)
