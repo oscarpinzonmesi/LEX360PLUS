@@ -2014,3 +2014,28 @@ class DocumentosModule(QWidget):
         except Exception as e:
             self.mostrar_error("Error en vista", f"Ocurrió un error al eliminar: {e}")
             logger.error(f"Error al eliminar definitivamente: {e}", exc_info=True)
+
+        
+    def on_restaurar_clicked(self):
+        """
+        Acción al restaurar un documento desde la papelera:
+        - Restaura usando el controller (ya está configurado en tu app).
+        - Luego vuelve automáticamente a documentos activos.
+        """
+        try:
+            # Aquí llamas al método de restaurar (tú ya lo tienes hecho en el controller).
+            # Ejemplo: self.controller.restaurar_documento(self.get_selected_document_id())
+
+            # 👇 Después de restaurar, forzamos la vista de documentos activos:
+            self.mostrando_papelera = False
+            self.btn_restaurar.setVisible(False)
+            self.btn_eliminar_definitivo.setVisible(False)
+            self.btn_papelera.setVisible(True)
+
+            # Volvemos a cargar documentos activos
+            self.ejecutar_busqueda()
+
+        except Exception as e:
+            print(f"Error al restaurar documento: {e}")
+
+>>>>>>> develop
