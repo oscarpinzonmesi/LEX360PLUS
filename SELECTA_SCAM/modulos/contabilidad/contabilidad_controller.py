@@ -93,24 +93,23 @@ class ContabilidadController(QObject):
             self.logger.exception("Error al cargar registros/resumen")
             self.operation_failed.emit(f"Error al cargar datos y resumen: {str(e)}")
 
-    def add_record(
-        self, cliente_id, proceso_id, tipo_contable_id, descripcion, monto, fecha
-    ):
-        try:
-            self.contabilidad_logic.add_contabilidad_record(
-                cliente_id=cliente_id,
-                proceso_id=proceso_id,
-                tipo_contable_id=tipo_contable_id,
-                descripcion=descripcion,
-                monto=monto,
-                fecha=fecha,
-            )
-            self.load_records()  # recargar tabla/resumen
-        except Exception as e:
-            logger.error("Error inesperado al añadir registro", exc_info=True)
-            QMessageBox.critical(
-                None, "Error", f"Error inesperado al añadir registro: {e}"
-            )
+
+def add_record(
+    self, cliente_id, proceso_id, tipo_contable_id, descripcion, monto, fecha
+):
+    try:
+        self.contabilidad_logic.add_contabilidad_record(
+            cliente_id=cliente_id,
+            proceso_id=proceso_id,
+            tipo_contable_id=tipo_contable_id,
+            descripcion=descripcion,
+            monto=monto,
+            fecha=fecha,
+        )
+        self.load_records()  # recargar tabla/resumen
+    except Exception as e:
+        logger.error("Error inesperado al añadir registro", exc_info=True)
+        QMessageBox.critical(None, "Error", f"Error inesperado al añadir registro: {e}")
 
     def update_record(
         self, record_id, cliente_id, proceso_id, tipo_id, descripcion, valor, fecha
