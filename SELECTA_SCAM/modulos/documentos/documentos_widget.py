@@ -1874,6 +1874,16 @@ class DocumentosModule(QWidget):
     def show_info_message(self, title: str, message: str):
         """Muestra un mensaje de información al usuario."""
         QMessageBox.information(self, title, message)
+    
+    def mostrar_documentos_activos(self):
+        """Forzar vista de documentos activos y refrescar."""
+        self.mostrando_papelera = False
+        try:
+            self.limpiar_filtros_busqueda(keep_mode=True)
+        except TypeError:
+            self.limpiar_filtros_busqueda()
+        self.ejecutar_busqueda()
+
 
     def on_btn_restaurar_clicked(self):
         try:
