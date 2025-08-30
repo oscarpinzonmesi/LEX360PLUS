@@ -181,7 +181,7 @@ class ContabilidadLogic:
         Obtiene varios registros por IDs.
         """
         with self.db_manager() as session:
-            results = session.query(
+            query = session.query(
                 Contabilidad.id,
                 Cliente.nombre,
                 Proceso.radicado,
@@ -189,10 +189,10 @@ class ContabilidadLogic:
                 Contabilidad.descripcion,
                 Contabilidad.monto,
                 Contabilidad.fecha
-            ).join(Cliente
-            ).outerjoin(Proceso
-            ).join(TipoContable
-            ).filter(Contabilidad.id.in_(record_ids)).all()
+            ).join(Cliente, Contabilidad.cliente_id == Cliente.id
+            ).outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id
+            ).join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
+
 
             return [(r[0], r[1], r[2] or "", r[3], r[4],
                      float(r[5]), r[6].strftime("%Y-%m-%d")) for r in results]
