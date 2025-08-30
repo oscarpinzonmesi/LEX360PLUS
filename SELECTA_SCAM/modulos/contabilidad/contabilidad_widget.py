@@ -716,29 +716,13 @@ class ContabilidadWidget(QWidget):
         if confirm == QMessageBox.Yes:
             self.controller.delete_record(record_id)
 
-
     def update_action_button_states(self):
-        """
-        Habilita/deshabilita los botones de acción basados en la selección
-        y los permisos del usuario.
-        """
         selected_rows = self.table_view.selectionModel().selectedRows()
         has_selection = len(selected_rows) > 0
-        user_role = self.user_data.get('role', 'user')
-        is_admin = (user_role == 'admin')
-        
-        # Lógica para Editar (solo 1 fila seleccionada y es admin)
-            # Lógica para Editar (solo depende de si hay 1 fila seleccionada)
         self.btn_editar.setEnabled(len(selected_rows) == 1)
-        
-        # Lógica para Eliminar (solo depende de si hay al menos 1 fila seleccionada)
         self.btn_eliminar.setEnabled(has_selection)
-        
-        # --- LÍNEA CLAVE CORREGIDA ---
-        # Lógica para Agregar (siempre activo si es admin, sin importar la selección)
         self.btn_agregar.setEnabled(True)
-        
-        # --- El resto del método para calcular los totales se mantiene igual ---
+
         total_ingresos_seleccion = 0.0
         total_gastos_seleccion = 0.0
 
@@ -752,24 +736,19 @@ class ContabilidadWidget(QWidget):
                     try:
                         if isinstance(valor, str):
                             valor = float(valor.replace('$', '').replace(',', ''))
-                        
-                        tipo_str_lower = tipo_str.lower()
-                        
-                        if "ingreso" in tipo_str_lower:
+                        if "ingreso" in tipo_str.lower():
                             total_ingresos_seleccion += valor
                         else:
                             total_gastos_seleccion += valor
-                    except (ValueError, IndexError, TypeError) as e:
-                        self.logger.warning(f"Error al procesar los datos de la fila seleccionada en la fila {row}. Error: {e}. Datos: {record_data}")
-            
-            saldo_neto_seleccion = total_ingresos_seleccion - total_gastos_seleccion
+                    except Exception:
+                        pass
+            saldo_neto = total_ingresos_seleccion - total_gastos_seleccion
             self.total_ingresos_display.setText(f"${total_ingresos_seleccion:,.2f}")
             self.total_gastos_display.setText(f"${total_gastos_seleccion:,.2f}")
-            self.saldo_display.setText(f"${saldo_neto_seleccion:,.2f}")
+            self.saldo_display.setText(f"${saldo_neto:,.2f}")
         else:
-            # Si no hay nada seleccionado, volvemos a mostrar los totales generales
             self.update_contabilidad_display()
-    
+
     def clear_inputs(self):
         self.cliente_input.blockSignals(True)
         self.proceso_input.blockSignals(True)
@@ -777,48 +756,22 @@ class ContabilidadWidget(QWidget):
         self.proceso_input.setCurrentIndex(0)
         self.cliente_input.blockSignals(False)
         self.proceso_input.blockSignals(False)
-        
-    def check_user_permissions(self): 
-        """
-        Ajusta la visibilidad y el estado de los botones de acción basados en el rol del usuario.
-        """
-        user_role = self.user_data.get('role', 'user')
-        is_admin = (user_role == 'admin') # Esta línea sigue para que el log de debug pueda usarla, pero su efecto directo se anula.
+
+    def check_user_permissions(self):
         self.btn_agregar.setEnabled(True)
-        self.btn_editar.setEnabled(True) 
+        self.btn_editar.setEnabled(True)
         self.btn_eliminar.setEnabled(True)
-        self.btn_pdf.setEnabled(self.btn_pdf.isEnabled()) 
-    
+        self.btn_pdf.setEnabled(self.btn_pdf.isEnabled())
+
     def handle_procesos_for_dialog(self, procesos_data: list):
-        """
-        Este método es un slot que recibe los procesos que el controlador
-        obtuvo específicamente para el diálogo de edición/adición.
-        Si el diálogo está activo, se los pasa.
-        """
         if hasattr(self, '_current_dialog_instance') and self._current_dialog_instance:
             self._current_dialog_instance.update_proceso_combo_dialog(procesos_data)
-        else:
-            logger.warning("ContabilidadWidget: Procesos para diálogo recibidos, pero no hay diálogo activo.")
-
-
-            # En: SELECTA_SCAM/modulos/contabilidad/contabilidad_widget.py
-    # En: SELECTA_SCAM/modulos/contabilidad/contabilidad_widget.py
-        # Reemplaza el método completo con este:
-
-    # En: SELECTA_SCAM/modulos/contabilidad/contabilidad_widget.py
-# Reemplaza tu método on_btn_pdf_clicked con este:
 
     def on_generar_reporte_clicked(self):
-        """
-        Orquesta la generación de reportes. Primero pide al usuario que elija
-        un formato (PDF, Excel, CSV) y luego procede a generar el archivo.
-        """
         try:
-            # 1. Obtener datos y preparar nombre de archivo (lógica que ya funciona)
             cliente_id = self.cliente_filter_combo.currentData()
             tipo_id = self.tipo_input.currentData()
             selected_ids = self.get_selected_record_ids()
-            
             nombre_base = ""
             report_data = None
 
@@ -844,82 +797,53 @@ class ContabilidadWidget(QWidget):
                     nombre_base = f"reporte_de_{self.cliente_filter_combo.currentText().replace(' ', '_')}_por_{self.tipo_input.currentText().replace(' ', '_')}"
                 else:
                     nombre_base = "reporte_general"
-            
+
             if not (report_data and report_data.records):
                 QMessageBox.information(self, "Sin Datos", "No hay registros para generar el reporte.")
                 return
 
-            # 2. Abrir el diálogo para seleccionar el formato
             dialogo_formato = FormatoReporteDialog(self)
             if not dialogo_formato.exec() == QDialog.Accepted:
-                return # El usuario cerró el diálogo
+                return
 
             formato = dialogo_formato.formato_seleccionado
-            
-            # 3. Preparar la ruta de guardado según el formato
-            extension, filtro_archivo, funcion_generadora = "", "", None
-
             if formato == "pdf":
-                # Importación local para evitar dependencias circulares si se mueve el archivo
                 from .contabilidad_pdf import generar_pdf_resumen_contabilidad
-                extension, filtro_archivo, funcion_generadora = "pdf", "Archivos PDF (*.pdf)", generar_pdf_resumen_contabilidad
-            
+                extension, filtro, funcion = "pdf", "Archivos PDF (*.pdf)", generar_pdf_resumen_contabilidad
             elif formato == "excel":
-                # Asegúrate de haber creado el archivo contabilidad_excel.py
                 from .contabilidad_excel import generar_excel_resumen_contabilidad
-                extension, filtro_archivo, funcion_generadora = "xlsx", "Archivos Excel (*.xlsx)", generar_excel_resumen_contabilidad
-            
+                extension, filtro, funcion = "xlsx", "Archivos Excel (*.xlsx)", generar_excel_resumen_contabilidad
             elif formato == "csv":
-                # Asegúrate de haber creado el archivo contabilidad_csv.py
                 from .contabilidad_csv import generar_csv_resumen_contabilidad
-                extension, filtro_archivo, funcion_generadora = "csv", "Archivos CSV (*.csv)", generar_csv_resumen_contabilidad
+                extension, filtro, funcion = "csv", "Archivos CSV (*.csv)", generar_csv_resumen_contabilidad
 
-            nombre_archivo_sugerido = f"{nombre_base}_{datetime.now().strftime('%Y-%m-%d')}.{extension}"
-            
-            home_dir = os.path.expanduser("~")
-            save_dir_es = os.path.join(home_dir, "Descargas")
-            save_dir_en = os.path.join(home_dir, "Downloads")
-            save_dir = save_dir_es if os.path.isdir(save_dir_es) else (save_dir_en if os.path.isdir(save_dir_en) else home_dir)
-            default_path = os.path.join(save_dir, nombre_archivo_sugerido)
+            nombre_sugerido = f"{nombre_base}_{datetime.now().strftime('%Y-%m-%d')}.{extension}"
+            home = os.path.expanduser("~")
+            save_dir = os.path.join(home, "Descargas") if os.path.isdir(os.path.join(home, "Descargas")) else (
+                    os.path.join(home, "Downloads") if os.path.isdir(os.path.join(home, "Downloads")) else home)
+            default_path = os.path.join(save_dir, nombre_sugerido)
 
-            # 4. Mostrar diálogo "Guardar Como" y generar el archivo
-            ruta_guardar, _ = QFileDialog.getSaveFileName(self, f"Guardar Reporte {formato.upper()}", default_path, filtro_archivo)
-
+            ruta_guardar, _ = QFileDialog.getSaveFileName(self, f"Guardar Reporte {formato.upper()}", default_path, filtro)
             if ruta_guardar:
-                success = funcion_generadora(ruta_guardar, report_data)
+                success = funcion(ruta_guardar, report_data)
                 if success:
-                    QMessageBox.information(self, "Éxito", f"El reporte se ha guardado exitosamente en:\n{ruta_guardar}")
+                    QMessageBox.information(self, "Éxito", f"El reporte se ha guardado en:\n{ruta_guardar}")
                 else:
-                    QMessageBox.critical(self, "Error", f"Ocurrió un error al guardar el reporte en formato {formato.upper()}.")
-
+                    QMessageBox.critical(self, "Error", f"Ocurrió un error al guardar el reporte en {formato.upper()}.")
         except Exception as e:
-            self.logger.error(f"Error en el proceso de generación de reporte: {e}", exc_info=True)
             QMessageBox.critical(self, "Error", f"Ocurrió un error inesperado: {e}")
 
-
     def get_selected_record_ids(self) -> list:
-        """
-        Obtiene los IDs de los registros seleccionados en la QTableView.
-        """
         selected_ids = []
         selection_model = self.table_view.selectionModel()
-
         if selection_model:
-            selected_rows = set()
-            for index in selection_model.selectedRows():
-                selected_rows.add(index.row())
-            
-            # En: contabilidad_widget.py
-# Dentro de: def get_selected_record_ids(self):
-
-        # Reemplaza tu bucle 'for' con este:
-        for row in selected_rows:
-            # CORRECCIÓN: Usamos 'self.table_view' con 'v' minúscula
-            id_index = self.table_view.model().index(row, 0)
-            record_id = self.table_view.model().data(id_index, Qt.DisplayRole)
-            if record_id is not None:
-                try:
-                    selected_ids.append(int(record_id))
-                except (ValueError, TypeError):
-                    self.logger.warning(f"No se pudo convertir el ID '{record_id}' a entero en la fila {row}.")
+            selected_rows = {index.row() for index in selection_model.selectedRows()}
+            for row in selected_rows:
+                id_index = self.table_view.model().index(row, 0)
+                record_id = self.table_view.model().data(id_index, Qt.DisplayRole)
+                if record_id is not None:
+                    try:
+                        selected_ids.append(int(record_id))
+                    except Exception:
+                        pass
         return selected_ids
