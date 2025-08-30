@@ -158,40 +158,91 @@ class ContabilidadWidget(QWidget):
         self.connect_signals()
 
     def init_ui(self):
-        # estilos
-        self.setStyleSheet("""QWidget { background-color: #F8F0F5; }""")
+        # 🎨 Estilos visuales
+        self.setStyleSheet("""
+            QWidget { background-color: #F8F0F5; color: #333333; font-family: 'Segoe UI', 'Arial', sans-serif; }
+            QLabel#mainTitle { color: #D36B92; font-size: 28px; font-weight: bold; padding-bottom: 15px; border-bottom: 1px solid #E0E0E0; margin-bottom: 20px; padding-top: 10px; }
+            QTableView#tablaContabilidad { font-family: 'Segoe UI'; font-size: 24px; background-color: white; border: 1px solid #E0E0E0; gridline-color: #F0F0F0; border-radius: 8px; selection-background-color: #D36B92; selection-color: white; }
+            QTableView#tablaContabilidad::item { padding: 8px 10px; }
+            QTableView::item:alternate { background-color: #FDF7FA; }
+            QHeaderView::section { background-color: #F8F0F5; color: #5D566F; font-size: 18px; font-weight: bold; border-bottom: 2px solid #D36B92; padding: 10px 10px; }
+            QHeaderView::section:horizontal { border-right: 1px solid #F0F0F0; }
+            QHeaderView::section:last { border-right: none; }
+            QLabel#CustomTooltip { background-color: #333333; color: white; border: 1px solid #5D566F; border-radius: 5px; padding: 5px 10px; font-size: 20px; font-weight: bold; }
+            QPushButton { background-color: #5D566F; color: white; border-radius: 6px; padding: 12px 25px; font-size: 20px; font-weight: 600; border: none; outline: none; }
+            QPushButton:hover { background-color: #7B718D; }
+            QPushButton:pressed { background-color: #4A445C; }
+            QPushButton:disabled { background-color: #B0B0B0; color: #DDDDDD; }
+            QPushButton#btn_agregar { background-color: #D36B92; }
+            QPushButton#btn_agregar:hover { background-color: #E279A1; }
+            QPushButton#btn_agregar:pressed { background-color: #B85F7F; }
+            QPushButton#btn_editar { background-color: #5AA1B9; }
+            QPushButton#btn_editar:hover { background-color: #7BC2DA; }
+            QPushButton#btn_editar:pressed { background-color: #4E8BA3; }
+            QPushButton#btn_eliminar { background-color: #CC5555; }
+            QPushButton#btn_eliminar:hover { background-color: #D96666; }
+            QPushButton#btn_eliminar:pressed { background-color: #B34444; }
+            QPushButton#btn_pdf, QPushButton#btn_generar_resumen_pdf { background-color: #6C757D; }
+            QPushButton#btn_pdf:hover, QPushButton#btn_generar_resumen_pdf:hover { background-color: #8D9BA6; }
+            QPushButton#btn_pdf:pressed, QPushButton#btn_generar_resumen_pdf:pressed { background-color: #5A6268; }
+            QLineEdit, QDateEdit, QComboBox { padding: 10px 15px; border: 1px solid #CED4DA; border-radius: 6px; font-size: 20px; color: #495057; background-color: white; }
+            QLineEdit::placeholder { color: #ADB5BD; }
+            QComboBox QAbstractItemView { border: 1px solid #D36B92; background-color: white; selection-background-color: #FDF7FA; selection-color: #333333; }
+            QLabel { color: #5D566F; font-size: 16px; font-weight: bold; padding-right: 5px; }
+        """)
+
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(30, 30, 30, 30)
+        main_layout.setSpacing(20)
+
+        # 📌 Título
         self.title_label = QLabel("Gestión de Contabilidad")
+        self.title_label.setObjectName("mainTitle")
         self.title_label.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(self.title_label)
 
-        # filtros y botones superiores
+        # 📌 Filtros y acciones superiores
         top_layout = QHBoxLayout()
+        top_layout.setSpacing(10)
+        top_layout.setAlignment(Qt.AlignLeft)
+
         top_layout.addWidget(QLabel("Cliente:"))
         top_layout.addWidget(self.cliente_filter_combo)
+
         self.cliente_search_label = QLabel("Buscar Cliente:")
         self.cliente_search_label.hide()
-        self.cliente_search_input = QLineEdit(self)
-        self.cliente_search_input.setPlaceholderText("Buscar cliente...")
-        self.cliente_search_input.hide()
         top_layout.addWidget(self.cliente_search_label)
+
+        self.cliente_search_input = QLineEdit(self)
+        self.cliente_search_input.setPlaceholderText("Buscar cliente por nombre o ID...")
+        self.cliente_search_input.hide()
         top_layout.addWidget(self.cliente_search_input)
+
         top_layout.addWidget(QLabel("Tipo:"))
         top_layout.addWidget(self.tipo_input)
+
         top_layout.addWidget(QLabel("Proceso:"))
         top_layout.addWidget(self.proceso_input)
+
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Buscar por descripción...")
         self.search_input.textChanged.connect(self.update_contabilidad_display)
         top_layout.addWidget(self.search_input)
+
         self.btn_limpiar_filtros = QPushButton("Limpiar Filtros")
+        self.btn_limpiar_filtros.setObjectName("btn_limpiar_filtros")
         top_layout.addWidget(self.btn_limpiar_filtros)
+
+        top_layout.addStretch()
         self.btn_agregar = QPushButton("Agregar")
+        self.btn_agregar.setObjectName("btn_agregar")
         top_layout.addWidget(self.btn_agregar)
         main_layout.addLayout(top_layout)
 
-        # tabla
+        # 📌 Tabla
         self.table_view = QTableView()
+        self.table_view.setObjectName("tablaContabilidad")
+        self.table_view.setMouseTracking(True)
         self.table_view.setModel(self.contabilidad_table_model)
         self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table_view.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -199,25 +250,66 @@ class ContabilidadWidget(QWidget):
         self.table_view.verticalHeader().setVisible(False)
         main_layout.addWidget(self.table_view)
 
-        # resumen
-        summary_layout = QFormLayout()
-        self.total_ingresos_display = QLineEdit("0.00"); self.total_ingresos_display.setReadOnly(True)
-        self.total_gastos_display = QLineEdit("0.00"); self.total_gastos_display.setReadOnly(True)
-        self.saldo_display = QLineEdit("0.00"); self.saldo_display.setReadOnly(True)
-        summary_layout.addRow("Ingresos:", self.total_ingresos_display)
-        summary_layout.addRow("Gastos:", self.total_gastos_display)
-        summary_layout.addRow("Saldo:", self.saldo_display)
-        main_layout.addLayout(summary_layout)
+        # 📌 Resumen
+        summary_group_box = QWidget()
+        summary_group_box.setStyleSheet("""
+            QWidget { background-color: #FDF7FA; border: 1px solid #E0E0E0; border-radius: 8px; padding: 15px; margin-top: 10px; }
+            QLabel { font-size: 15px; font-weight: 600; color: #5D566F; }
+            QLineEdit { background-color: #FFFFFF; border: 1px solid #CED4DA; border-radius: 4px; padding: 5px; font-size: 15px; color: #333333; }
+        """)
+        summary_layout = QFormLayout(summary_group_box)
+        summary_layout.setContentsMargins(10, 10, 10, 10)
+        summary_layout.setSpacing(10)
 
-        # botones inferiores
+        self.total_ingresos_display = QLineEdit("0.00")
+        self.total_ingresos_display.setReadOnly(True)
+        summary_layout.addRow("Ingresos Totales:", self.total_ingresos_display)
+
+        self.total_gastos_display = QLineEdit("0.00")
+        self.total_gastos_display.setReadOnly(True)
+        summary_layout.addRow("Gastos Totales:", self.total_gastos_display)
+
+        self.saldo_display = QLineEdit("0.00")
+        self.saldo_display.setReadOnly(True)
+        summary_layout.addRow("Saldo (Neto):", self.saldo_display)
+
+        main_layout.addWidget(summary_group_box)
+
+        # 📌 Botones inferiores
         btn_layout = QHBoxLayout()
-        self.btn_editar = QPushButton("Editar"); self.btn_editar.setEnabled(False)
-        self.btn_eliminar = QPushButton("Eliminar"); self.btn_eliminar.setEnabled(False)
-        self.btn_pdf = QPushButton("Generar Reporte")
+        btn_layout.setSpacing(15)
+        btn_layout.addStretch()
+
+        self.btn_editar = QPushButton("Editar")
+        self.btn_editar.setObjectName("btn_editar")
+        self.btn_editar.setEnabled(False)
         btn_layout.addWidget(self.btn_editar)
+
+        self.btn_eliminar = QPushButton("Eliminar")
+        self.btn_eliminar.setObjectName("btn_eliminar")
+        self.btn_eliminar.setEnabled(False)
         btn_layout.addWidget(self.btn_eliminar)
+
+        self.btn_pdf = QPushButton("Generar Reporte")
+        self.btn_pdf.setObjectName("btn_pdf")
         btn_layout.addWidget(self.btn_pdf)
+
+        btn_layout.addStretch()
         main_layout.addLayout(btn_layout)
+
+        # 📌 Tooltip personalizado
+        self._last_hovered_index = QModelIndex()
+        self.table_view.viewport().installEventFilter(self)
+
+        self.custom_tooltip_label = QLabel(self)
+        self.custom_tooltip_label.setObjectName("CustomTooltip")
+        self.custom_tooltip_label.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint)
+        self.custom_tooltip_label.hide()
+
+        self.hide_tooltip_timer = QTimer(self)
+        self.hide_tooltip_timer.setSingleShot(True)
+        self.hide_tooltip_timer.timeout.connect(self.custom_tooltip_label.hide)
+
 
     # -------- lógica (resumida y limpia) ----------
     def update_cliente_combo(self, clientes_data: list):
