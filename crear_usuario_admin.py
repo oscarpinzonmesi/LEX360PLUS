@@ -1,30 +1,36 @@
-import sqlite3
-import bcrypt
+# crear_usuario_admin.py (actualizado)
+import sys, os
+from datetime import date
+from SELECTA_SCAM.utils.db_manager import get_db_session
+from SELECTA_SCAM.db.models import Usuario
+from SELECTA_SCAM.utils.hashing import hash_password  # ya lo tienes en utils
 
-DATABASE_PATH = "data/base_datos.db"  # Ajusta si usas otro nombre o ruta
 
 def crear_usuario_admin():
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-
-    username = "admin"
-    password = "admin123"
-    role = "administrador"
-
-    # Encriptar la contraseña correctamente
-    hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
+    session = get_db_session()
     try:
-        cursor.execute(
-            "INSERT INTO usuarios (usuario, contrasena, rol) VALUES (?, ?, ?)",
-            (username, hashed_password, role)
-        )
-        conn.commit()
-        print("✅ Usuario 'admin' creado con éxito.")
-    except sqlite3.IntegrityError:
-        print("⚠️ El usuario 'admin' ya existe.")
+        if session.query(Usuario).filter_by(username="admin").first():
+            print("⚠️ El usuario 'admin' ya existe.")
+            return
 
-    conn.close()
+        user = Usuario(
+            username="admin",
+            password_hash=hash_password("admin123"),
+            email="admin@example.com",
+            activo=True,
+            es_admin=True,
+            fecha_creacion=date.today(),
+            eliminado=False,
+        )
+        session.add(user)
+        session.commit()
+        print("✅ Usuario 'admin' creado con éxito.")
+    except Exception as e:
+        print("❌ Error al crear admin:", e)
+        session.rollback()
+    finally:
+        session.close()
+
 
 if __name__ == "__main__":
     crear_usuario_admin()

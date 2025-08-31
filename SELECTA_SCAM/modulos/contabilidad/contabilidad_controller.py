@@ -47,16 +47,60 @@ class ContabilidadController(QObject):
         self.logger = logger
         self.logger.info("ContabilidadController: Inicializado.")
 
-    # -------------------------------
-    # CRUD + sincronización con tabla
-    # -------------------------------
+        self._last_filters = {
+            "cliente_id": None,
+            "proceso_id": None,
+            "search_term": None,
+            "tipo_contable_id": None,
+        }
+
+        record_moved_to_trash = pyqtSignal(int)
+        record_restored = pyqtSignal(int)
+        record_deleted = pyqtSignal(int)
+        trash_records_loaded = pyqtSignal(list)
+
+    def mover_a_papelera(self, record_id: int):
+        if self.contabilidad_logic.mover_a_papelera(record_id):
+            self.logger.info(f"Registro movido a papelera ID={record_id}")
+            self.record_moved_to_trash.emit(record_id)
+            self.get_contabilidad_records_sync()
+
+    def restaurar_de_papelera(self, record_id: int):
+        if self.contabilidad_logic.restaurar_de_papelera(record_id):
+            self.logger.info(f"Registro restaurado ID={record_id}")
+            self.record_restored.emit(record_id)
+            self.get_contabilidad_records_sync()
+
+    def eliminar_definitivo(self, record_id: int):
+        if self.contabilidad_logic.eliminar_definitivo(record_id):
+            self.logger.info(f"Registro eliminado definitivamente ID={record_id}")
+            self.record_deleted.emit(record_id)
+
+    def get_records_in_papelera(self):
+        records = self.contabilidad_logic.get_records_in_papelera()
+        self.trash_records_loaded.emit(records)
+
+    def add_record(self, **kwargs):
+        try:
+            new_id = self.contabilidad_logic.add_contabilidad_record(
+                **kwargs
+            )  # ← ahora es int
+            self.logger.info(f"Registro añadido ID={new_id}")
+            self.load_records()  # 🔄 refresca tabla + resumen usando los últimos filtros
+            self.operation_successful.emit(f"Registro agregado con éxito (ID={new_id})")
+            return new_id
+        except Exception as e:
+            self.logger.exception("Error al añadir registro")
+            self.operation_failed.emit(f"No se pudo añadir el registro: {e}")
+            return None
 
     def get_contabilidad_records_sync(
         self,
         cliente_id: int = None,
         proceso_id: int = None,
         search_term: str = None,
-        tipo_contable_id: int = None,  # 🔄 cambio aquí
+        tipo_contable_id: int = None,
+        mostrando_papelera: bool = False,  # 🔎 nuevo
     ):
         """
         Recupera registros filtrados, actualiza la tabla y emite el resumen de totales.
@@ -66,7 +110,54 @@ class ContabilidadController(QObject):
                 cliente_id=cliente_id,
                 proceso_id=proceso_id,
                 search_term=search_term,
-                tipo_contable_id=tipo_contable_id,  # 🔄 cambio aquí
+                tipo_contable_id=tipo_contable_id,
+                mostrando_papelera=mostrando_papelera,  # 🔎 pasar a la lógica
+            )
+
+            self.data_updated.emit(records)
+            self.logger.info(
+                f"ContabilidadController: Registros emitidos ({len(records)})."
+            )
+
+            # Resumen (solo para activos; si quieres también en papelera, quita el if)
+            total_ingresos, total_gastos = 0.0, 0.0
+            if not mostrando_papelera:
+                for record in records:
+                    valor = float(record[5])
+                    tipo_str = str(record[3]).lower()
+                    if "ingreso" in tipo_str:
+                        total_ingresos += valor
+                    else:
+                        total_gastos += valor
+
+            summary_data = {
+                "total_ingresos": total_ingresos,
+                "total_gastos": total_gastos,
+                "saldo": total_ingresos - total_gastos,
+            }
+            self.summary_data_loaded.emit(summary_data)
+        except Exception as e:
+            self.logger.exception("Error al cargar registros/resumen")
+            self.operation_failed.emit(f"Error al cargar datos y resumen: {str(e)}")
+
+    def get_contabilidad_records_sync(
+        self,
+        cliente_id: int = None,
+        proceso_id: int = None,
+        search_term: str = None,
+        tipo_contable_id: int = None,
+        mostrando_papelera: bool = False,  # 🔎 añadido
+    ):
+        """
+        Recupera registros filtrados, actualiza la tabla y emite el resumen de totales.
+        """
+        try:
+            records = self.contabilidad_logic.get_contabilidad_data_for_display(
+                cliente_id=cliente_id,
+                proceso_id=proceso_id,
+                search_term=search_term,
+                tipo_contable_id=tipo_contable_id,
+                mostrando_papelera=mostrando_papelera,  # 🔎 pasar a la lógica
             )
             self.data_updated.emit(records)
             self.logger.info(
@@ -89,54 +180,49 @@ class ContabilidadController(QObject):
                 "saldo": total_ingresos - total_gastos,
             }
             self.summary_data_loaded.emit(summary_data)
+
         except Exception as e:
             self.logger.exception("Error al cargar registros/resumen")
             self.operation_failed.emit(f"Error al cargar datos y resumen: {str(e)}")
 
-    def add_record(
-        self,
-        cliente_id,
-        proceso_id,
-        tipo_contable_id,
-        descripcion,
-        monto,
-        fecha,
-        current_filter_cliente_id: int = None,
-        current_filter_proceso_id: int = None,
-    ):
-        """
-        Agrega un registro y refresca la tabla.
-        """
+    def enviar_a_papelera(self, ids: list[int], refresh_kwargs: dict | None = None):
         try:
-            self.contabilidad_logic.add_contabilidad_record(
-                cliente_id=cliente_id,
-                proceso_id=proceso_id,
-                tipo_contable_id=tipo_contable_id,
-                descripcion=descripcion,
-                monto=monto,
-                fecha=fecha,
-            )
-
-            # Recargar datos actualizados
-            self.get_contabilidad_records_sync(
-                cliente_id=current_filter_cliente_id,
-                proceso_id=current_filter_proceso_id,
-            )
-
+            n = self.contabilidad_logic.mover_a_papelera(ids)
             self.operation_successful.emit(
-                "¡Registro de contabilidad añadido exitosamente!"
+                f"Se enviaron {n} registro(s) a la papelera."
             )
-
+            if refresh_kwargs:
+                self.get_contabilidad_records_sync(**refresh_kwargs)
         except Exception as e:
-            self.logger.error("Error inesperado al añadir registro", exc_info=True)
-            self.operation_failed.emit(f"Error inesperado al añadir registro: {str(e)}")
+            self.logger.exception("Error al enviar a papelera")
+            self.operation_failed.emit(f"No se pudo enviar a papelera: {e}")
+
+    def restaurar_registros(self, ids: list[int], refresh_kwargs: dict | None = None):
+        try:
+            n = self.contabilidad_logic.restaurar_desde_papelera(ids)
+            self.operation_successful.emit(f"Se restauraron {n} registro(s).")
+            if refresh_kwargs:
+                self.get_contabilidad_records_sync(**refresh_kwargs)
+        except Exception as e:
+            self.logger.exception("Error al restaurar")
+            self.operation_failed.emit(f"No se pudo restaurar: {e}")
+
+    def eliminar_definitivo(self, ids: list[int], refresh_kwargs: dict | None = None):
+        try:
+            n = self.contabilidad_logic.eliminar_definitivo(ids)
+            self.operation_successful.emit(
+                f"Se eliminaron definitivamente {n} registro(s)."
+            )
+            if refresh_kwargs:
+                self.get_contabilidad_records_sync(**refresh_kwargs)
+        except Exception as e:
+            self.logger.exception("Error al eliminar definitivamente")
+            self.operation_failed.emit(f"No se pudo eliminar definitivamente: {e}")
 
     def update_record(
         self, record_id, cliente_id, proceso_id, tipo_id, descripcion, valor, fecha
     ):
-        """
-        Actualiza un registro en DB.
-        """
+        """Actualiza un registro en DB."""
         try:
             self.contabilidad_logic.update_contabilidad_record(
                 record_id, cliente_id, proceso_id, tipo_id, descripcion, valor, fecha
@@ -208,6 +294,36 @@ class ContabilidadController(QObject):
             self.logger.exception("Error al cargar clientes")
             self.operation_failed.emit(f"Error al cargar clientes: {e}")
             return []
+
+    def update_record(self, record_id, **kwargs):
+        try:
+            self.contabilidad_logic.update_contabilidad_record(record_id, **kwargs)
+            self.logger.info(
+                f"ContabilidadController: Registro actualizado ID={record_id}"
+            )
+            self.load_records()  # 🔄 ahora funciona
+            self.operation_successful.emit("Registro actualizado exitosamente.")
+        except Exception as e:
+            self.logger.exception("Error al actualizar registro")
+            self.operation_failed.emit(f"Error al actualizar registro: {str(e)}")
+
+    def load_records(self):
+        """
+        Recarga la tabla y el resumen usando los últimos filtros aplicados.
+        """
+        try:
+            filters = getattr(self, "_last_filters", None)
+            if not filters:
+                filters = {
+                    "cliente_id": None,
+                    "proceso_id": None,
+                    "search_term": None,
+                    "tipo_contable_id": None,
+                }
+            self.get_contabilidad_records_sync(**filters)
+        except Exception as e:
+            self.logger.exception("Error al recargar registros")
+            self.operation_failed.emit(f"Error al recargar registros: {str(e)}")
 
     def get_all_procesos_sync(self):
         try:

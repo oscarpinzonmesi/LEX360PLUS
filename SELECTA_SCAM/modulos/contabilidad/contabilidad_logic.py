@@ -1,7 +1,7 @@
 import logging
 from datetime import date
 from typing import List, Optional, Tuple, Dict
-
+from datetime import datetime, date
 from SELECTA_SCAM.utils.db_manager import get_db_session
 from SELECTA_SCAM.db.models import Contabilidad, Cliente, Proceso, TipoContable
 
@@ -28,7 +28,17 @@ class ContabilidadLogic:
         descripcion: str,
         monto: float,
         fecha: date,
-    ) -> Contabilidad:
+    ) -> int:
+        """
+        Crea un registro de contabilidad y devuelve su ID.
+        Devuelve un entero para evitar problemas de Lazy Loading / objetos desconectados.
+        """
+        # Por si llega datetime/QDate, lo normalizamos a date
+        if isinstance(fecha, datetime):
+            fecha = fecha.date()
+        elif hasattr(fecha, "toPyDate"):
+            fecha = fecha.toPyDate()
+
         with self.db_manager() as session:
             record = Contabilidad(
                 cliente_id=cliente_id,
@@ -39,10 +49,46 @@ class ContabilidadLogic:
                 fecha=fecha,
             )
             session.add(record)
+            session.flush()  # asegura PK sin disparar __repr__
+            new_id = record.id
             session.commit()
-            session.refresh(record)
-            logger.info(f"ContabilidadLogic: Registro añadido ID={record.id}")
-            return record
+            logger.info("ContabilidadLogic: Registro añadido ID=%s", new_id)
+            return new_id
+
+    def mover_a_papelera(self, ids: List[int]) -> int:
+        with self.db_manager() as session:
+            count = (
+                session.query(Contabilidad)
+                .filter(Contabilidad.id.in_(ids), Contabilidad.is_active == True)
+                .update({Contabilidad.is_active: False}, synchronize_session=False)
+            )
+            session.commit()
+            return count
+
+    def restaurar_desde_papelera(self, ids: List[int]) -> int:
+        with self.db_manager() as session:
+            count = (
+                session.query(Contabilidad)
+                .filter(Contabilidad.id.in_(ids), Contabilidad.is_active == False)
+                .update({Contabilidad.is_active: True}, synchronize_session=False)
+            )
+            session.commit()
+            return count
+
+    def eliminar_definitivo(self, ids: List[int]) -> int:
+        with self.db_manager() as session:
+            rows = session.query(Contabilidad).filter(Contabilidad.id.in_(ids)).all()
+            count = len(rows)
+            for r in rows:
+                session.delete(r)
+            session.commit()
+            return count
+
+    def get_registros_en_papelera(self):
+        with self.db_manager() as session:
+            return (
+                session.query(Contabilidad).filter(Contabilidad.papelera == True).all()
+            )
 
     def update_contabilidad_record(
         self,
@@ -116,21 +162,102 @@ class ContabilidadLogic:
                 for r in results
             ]
 
+    def update_contabilidad_record(self, record_id: int, **data) -> bool:
+        """
+        Actualiza un registro de Contabilidad.
+        Acepta claves nuevas y alias viejos:
+        - tipo_contable_id  (alias: tipo_id)
+        - monto             (alias: valor)
+        - fecha / fecha_pago como date|datetime|str 'YYYY-MM-DD'
+        Solo actualiza campos presentes en **data (permite setear None).
+        """
+
+        def to_date(v):
+            if v is None:
+                return None
+            if isinstance(v, date):
+                # date o datetime -> date
+                return v if not isinstance(v, datetime) else v.date()
+            if isinstance(v, str) and v.strip():
+                for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d"):
+                    try:
+                        return datetime.strptime(v.strip(), fmt).date()
+                    except ValueError:
+                        pass
+            return None
+
+        def to_float(v):
+            if v is None:
+                return None
+            if isinstance(v, (int, float)):
+                return float(v)
+            if isinstance(v, str):
+                cleaned = v.replace("$", "").replace(",", "").strip()
+                try:
+                    return float(cleaned)
+                except ValueError:
+                    return None
+            return None
+
+        with self.db_manager() as session:
+            obj = session.get(Contabilidad, record_id)
+            if not obj:
+                raise ValueError(f"Contabilidad ID {record_id} no existe")
+
+            # Normalización de claves (alias → clave real)
+            normalized = {}
+
+            # claves directas si vienen
+            for key in (
+                "cliente_id",
+                "proceso_id",
+                "tipo_contable_id",
+                "descripcion",
+                "monto",
+                "fecha",
+                "metodo_pago",
+                "referencia_pago",
+                "esta_pagado",
+                "fecha_pago",
+                "is_active",
+            ):
+                if key in data:
+                    normalized[key] = data[key]
+
+            # alias compatibles
+            if "tipo_contable_id" not in normalized and "tipo_id" in data:
+                normalized["tipo_contable_id"] = data["tipo_id"]
+            if "monto" not in normalized and "valor" in data:
+                normalized["monto"] = data["valor"]
+
+            # conversiones
+            if "monto" in normalized:
+                normalized["monto"] = to_float(normalized["monto"])
+            if "fecha" in normalized:
+                normalized["fecha"] = to_date(normalized["fecha"])
+            if "fecha_pago" in normalized:
+                normalized["fecha_pago"] = to_date(normalized["fecha_pago"])
+
+            # aplicar cambios (inclusive None si la clave fue provista)
+            for k, v in normalized.items():
+                setattr(obj, k, v)
+
+            session.add(obj)
+            session.commit()
+            return True
+
     def get_contabilidad_data_for_display(
         self,
         cliente_id: int = None,
         proceso_id: int = None,
         search_term: str = None,
         tipo_contable_id: int = None,
+        mostrando_papelera: bool = False,  # 🔎 nuevo
     ) -> List[Tuple]:
         """
-        Retorna datos para mostrar en la UI, con filtros extra.
-        - Filtra por cliente_id (combo normal)
-        - Filtra por proceso_id
-        - Filtra por tipo_contable_id
-        - search_term:
-            * numérico → busca por Contabilidad.id
-            * texto    → busca por Cliente.nombre
+        Retorna datos listos para la tabla.
+        - search_term: numérico → Contabilidad.id; texto → Cliente.nombre
+        - mostrando_papelera: True => is_active=False, False => is_active=True
         """
         with self.db_manager() as session:
             query = (
@@ -148,35 +275,39 @@ class ContabilidadLogic:
                 .join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
             )
 
-            # 📌 Filtros directos
-            if cliente_id and not search_term:  # se ignora si hay búsqueda
+            # Activos vs Papelera
+            if mostrando_papelera:
+                query = query.filter(Contabilidad.eliminado == True)
+            else:
+                query = query.filter(Contabilidad.eliminado == False)
+
+            # Filtros directos (cliente_id se ignora si hay search_term para evitar doble filtro)
+            if cliente_id and not search_term:
                 query = query.filter(Contabilidad.cliente_id == cliente_id)
             if proceso_id:
                 query = query.filter(Contabilidad.proceso_id == proceso_id)
             if tipo_contable_id:
                 query = query.filter(Contabilidad.tipo_contable_id == tipo_contable_id)
 
-            # 📌 Nuevo: búsqueda flexible
+            # Búsqueda flexible
             if search_term:
                 if search_term.isdigit():
-                    # 🔎 Si es número → buscar por ID del registro contable
-                    query = query.filter(Contabilidad.id == int(search_term))
+                    query = query.filter(
+                        Contabilidad.id == int(search_term)
+                    )  # ID del registro contable
                 else:
-                    # 🔎 Si es texto → buscar por nombre del cliente
                     query = query.filter(Cliente.nombre.ilike(f"%{search_term}%"))
 
             results = query.all()
-
-            # 📌 Preparar resultados para la tabla
             return [
                 (
-                    r[0],  # Contabilidad.id
-                    r[1],  # Cliente.nombre
-                    r[2] or "",  # Proceso.radicado (puede ser None)
-                    r[3],  # TipoContable.nombre
+                    r[0],  # ID (contabilidad)
+                    r[1],  # Cliente
+                    r[2] or "",  # Proceso (radicado)
+                    r[3],  # Tipo contable (nombre)
                     r[4],  # Descripción
-                    float(r[5]),  # Monto (float)
-                    r[6].strftime("%Y-%m-%d"),  # Fecha formateada
+                    float(r[5]),  # Monto
+                    r[6].strftime("%Y-%m-%d"),  # Fecha
                 )
                 for r in results
             ]
@@ -204,9 +335,66 @@ class ContabilidadLogic:
             "saldo": total_ingresos - total_gastos,
         }
 
-    # -------------------------------
-    # Utilidades
-    # -------------------------------
+    def get_contabilidad_record_raw(self, record_id: int):
+        """
+        Devuelve el registro de contabilidad en el mismo orden 'display' que usa el diálogo:
+        [0]=Contabilidad.id
+        [1]=Cliente.nombre
+        [2]=Proceso.radicado  (puede ser None)
+        [3]=TipoContable.nombre
+        [4]=Contabilidad.descripcion
+        [5]=Contabilidad.monto (float)
+        [6]=Fecha como 'YYYY-MM-DD' (str)
+        Y añade extras al final para 'fallback' por ID:
+        [7]=cliente_id
+        [8]=proceso_id
+        [9]=tipo_contable_id
+        """
+        with self.db_manager() as session:
+            row = (
+                session.query(
+                    Contabilidad.id,  # [0]
+                    Cliente.nombre.label("cliente_nombre"),  # [1]
+                    Proceso.radicado.label("proceso_radicado"),  # [2] (outer)
+                    TipoContable.nombre.label("tipo_nombre"),  # [3]
+                    Contabilidad.descripcion,  # [4]
+                    Contabilidad.monto,  # [5]
+                    Contabilidad.fecha,  # [6] (datetime/date)
+                    Contabilidad.cliente_id,  # [7]
+                    Contabilidad.proceso_id,  # [8]
+                    Contabilidad.tipo_contable_id,  # [9]
+                )
+                .join(Cliente, Contabilidad.cliente_id == Cliente.id)
+                .outerjoin(Proceso, Contabilidad.proceso_id == Proceso.id)
+                .join(TipoContable, Contabilidad.tipo_contable_id == TipoContable.id)
+                .filter(Contabilidad.id == record_id)
+                .first()
+            )
+
+            if not row:
+                return None
+
+            # Normaliza tipos: monto a float y fecha a 'YYYY-MM-DD'
+            monto = float(row[5]) if row[5] is not None else 0.0
+            fecha_val = row[6]
+            if isinstance(fecha_val, (datetime, date)):
+                fecha_str = fecha_val.strftime("%Y-%m-%d")
+            else:
+                # Si ya viene como string, lo dejamos tal cual
+                fecha_str = str(fecha_val) if fecha_val is not None else None
+
+            return (
+                row[0],  # id
+                row[1],  # cliente_nombre
+                row[2],  # proceso_radicado (puede ser None)
+                row[3],  # tipo_nombre
+                row[4],  # descripcion
+                monto,  # monto float
+                fecha_str,  # fecha 'YYYY-MM-DD'
+                row[7],  # cliente_id
+                row[8],  # proceso_id
+                row[9],  # tipo_contable_id
+            )
 
     def get_record_by_id_for_display(self, record_id: int) -> Optional[Tuple]:
         """

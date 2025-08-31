@@ -21,6 +21,7 @@ from PyQt5.QtCore import (
     pyqtSignal,
     QModelIndex,
     QTimer,
+    QPoint,
 )
 from PyQt5.QtGui import QColor
 from datetime import datetime
@@ -147,7 +148,7 @@ class ContabilidadTableModel(QAbstractTableModel):
             if orientation == Qt.Horizontal:
                 return self.HEADERS[section]
             elif orientation == Qt.Vertical:
-                # 🔎 No mostrar nada en encabezado vertical
+                # 👇 Dejamos vacío el encabezado vertical (sin números)
                 return ""
         return QVariant()
 
@@ -179,7 +180,7 @@ class ContabilidadWidget(QWidget):
         self.proceso_input = QComboBox()
         self.proceso_input.addItem("Todos los Procesos", None)
         self.proceso_input.currentIndexChanged.connect(self.on_proceso_filter_changed)
-        self.proceso_input.setEnabled(False)
+        self.proceso_input.setEnabled(True)
 
         self.tipo_input = QComboBox()
         self.controller.clientes_loaded.connect(self.update_cliente_combo)
@@ -204,6 +205,19 @@ class ContabilidadWidget(QWidget):
         self.search_timer = QTimer(self)
         self.search_timer.setSingleShot(True)
         self.search_timer.timeout.connect(self.perform_search)
+        self.btn_papelera.clicked.connect(self.toggle_papelera_view)
+        (
+            self.btn_eliminar.clicked.disconnect()
+            if self.btn_eliminar.receivers(self.btn_eliminar.clicked)
+            else None
+        )
+        self.btn_eliminar.clicked.connect(
+            self.on_enviar_a_papelera_clicked
+        )  # 'Eliminar' => Papelera (activos)
+
+        self.btn_restaurar.clicked.connect(self.on_restaurar_clicked)
+        self.btn_eliminar_def.clicked.connect(self.on_eliminar_definitivo_clicked)
+
         self.connect_signals()
 
     def init_ui(self):
@@ -278,7 +292,7 @@ class ContabilidadWidget(QWidget):
         top_layout.addWidget(self.proceso_input)
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Buscar por descripción...")
+        self.search_input.setPlaceholderText("Por Descripción")
         self.search_input.textChanged.connect(self.update_contabilidad_display)
         top_layout.addWidget(self.search_input)
 
@@ -304,14 +318,14 @@ class ContabilidadWidget(QWidget):
         self.table_view.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_view.setEditTriggers(QAbstractItemView.NoEditTriggers)
         vh = self.table_view.verticalHeader()
-        vh.setVisible(True)  # mantenemos visible para que exista la columna
+        vh.setVisible(True)  # ✅ se ve la barra gris para seleccionar filas
         vh.setDefaultSectionSize(28)  # alto de fila uniforme
         vh.setSectionResizeMode(QHeaderView.Fixed)
-        vh.setMinimumWidth(30)
-        vh.setMaximumWidth(5)  # 🔎 oculta visualmente los números
+        self.table_view.selectionModel().selectionChanged.connect(
+            self.update_action_buttons_state
+        )
 
         main_layout.addWidget(self.table_view)
--
         # 📌 Resumen
         summary_group_box = QWidget()
         summary_group_box.setStyleSheet(
@@ -349,8 +363,8 @@ class ContabilidadWidget(QWidget):
         self.btn_editar.setEnabled(False)
         btn_layout.addWidget(self.btn_editar)
 
-        self.btn_eliminar = QPushButton("Eliminar")
-        self.btn_eliminar.setObjectName("btn_eliminar")
+        self.btn_eliminar = QPushButton("Enviar a Papelera")
+        self.btn_eliminar.setObjectName("btn_papelera")
         self.btn_eliminar.setEnabled(False)
         btn_layout.addWidget(self.btn_eliminar)
 
@@ -360,6 +374,20 @@ class ContabilidadWidget(QWidget):
 
         btn_layout.addStretch()
         main_layout.addLayout(btn_layout)
+        # Botón para alternar vista
+        self.btn_papelera = QPushButton("Ver Papelera")
+        btn_layout.addWidget(self.btn_papelera)
+
+        # Botones específicos de papelera
+        self.btn_restaurar = QPushButton("Restaurar")
+        self.btn_eliminar_def = QPushButton("Eliminar Definitivamente")
+        self.btn_restaurar.setVisible(False)
+        self.btn_eliminar_def.setVisible(False)
+        btn_layout.addWidget(self.btn_restaurar)
+        btn_layout.addWidget(self.btn_eliminar_def)
+
+        # Estado
+        self.mostrando_papelera = False
 
         # 📌 Tooltip personalizado
         self._last_hovered_index = QModelIndex()
@@ -392,6 +420,15 @@ class ContabilidadWidget(QWidget):
         self.cliente_filter_combo.setCurrentIndex(0)
         self.toggle_cliente_search_mode(False)
 
+    def mover_a_papelera(self):
+        sel = self.table_view.selectionModel().selectedRows()
+        if not sel:
+            QMessageBox.warning(self, "Papelera", "Seleccione al menos un registro.")
+            return
+        for index in sel:
+            record_id = self.contabilidad_table_model.get_record_id(index.row())
+            self.controller.mover_a_papelera(record_id)
+
     def on_cliente_filter_changed(self, index):
         cliente_id = self.cliente_filter_combo.currentData()
         if cliente_id == "SEARCH_MODE":
@@ -404,17 +441,27 @@ class ContabilidadWidget(QWidget):
                 self.controller.get_procesos_for_client_sync(cliente_id)
         self.update_contabilidad_display()
 
-    def update_proceso_combo(self, procesos_data: list):
+    def update_proceso_combo(self, procesos):
+        """
+        Actualiza el combo de procesos. Siempre incluye la opción 'Todos los Procesos'.
+        """
+        self.proceso_input.blockSignals(True)
         self.proceso_input.clear()
-        self.proceso_input.addItem("Sin proceso asociado", None)
-        for proceso_id, radicado in procesos_data:
-            self.proceso_input.addItem(radicado, proceso_id)
+        self.proceso_input.addItem("Todos los Procesos", None)  # opción general
+        for proceso in procesos:
+            # 👇 proceso.radicado es el campo visible, id es el valor interno
+            self.proceso_input.addItem(proceso.radicado, proceso.id)
+        self.proceso_input.blockSignals(False)
 
-    def update_tipo_combo(self, tipos_data: list):
+    def update_tipo_combo(self, tipos):
         self.tipo_input.clear()
-        self.tipo_input.addItem("Todos", None)
-        for tipo in tipos_data:
+        self.tipo_input.addItem("Todos", None)  # opción para no filtrar
+        for tipo in tipos:
+            # 👇 guardamos el id como data
             self.tipo_input.addItem(tipo.nombre, tipo.id)
+
+        # cuando cambie el combo, actualizamos tabla
+        self.tipo_input.currentIndexChanged.connect(self.update_contabilidad_display)
 
     def toggle_cliente_search_mode(self, enable: bool):
         self.is_search_mode_active = enable
@@ -428,19 +475,21 @@ class ContabilidadWidget(QWidget):
         try:
             cliente_id = self.cliente_filter_combo.currentData()
             proceso_id = self.proceso_input.currentData()
-            tipo_contable_id = self.tipo_input.currentData()  # 🔄 renombrado
+            tipo_contable_id = self.tipo_input.currentData()
             search_term = (
-                self.cliente_search_input.text()
+                self.cliente_search_input.text().strip()
                 if self.is_search_mode_active
-                else self.search_input.text()
+                else self.search_input.text().strip()
             )
             if self.is_search_mode_active:
                 cliente_id = None
+
             self.controller.get_contabilidad_records_sync(
                 cliente_id=cliente_id,
                 proceso_id=proceso_id,
                 search_term=search_term,
-                tipo_contable_id=tipo_contable_id,  # 🔄 actualizado
+                tipo_contable_id=tipo_contable_id,
+                mostrando_papelera=self.mostrando_papelera,  # 👈 nuevo
             )
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo actualizar la vista: {e}")
@@ -515,10 +564,9 @@ class ContabilidadWidget(QWidget):
         )
         if dialog.exec() == QDialog.Accepted:
             nuevos = dialog.get_values()
-            self.controller.model.update_contabilidad_record(
-                record_id=record_id, **nuevos
-            )
-            self.update_contabilidad_display()
+            if not nuevos:
+                return  # 🚨 Si hay errores de validación, no seguimos
+            self.controller.update_record(record_id, **nuevos)
 
     def eliminar_contabilidad(self):
         sel = self.table_view.selectionModel().selectedRows()
@@ -535,6 +583,19 @@ class ContabilidadWidget(QWidget):
         )
         if confirm == QMessageBox.Yes:
             self.controller.delete_record(record_id)
+
+    def update_action_buttons_state(self):
+        has_sel = len(self.get_selected_record_ids()) > 0
+        if self.mostrando_papelera:
+            self.btn_restaurar.setEnabled(has_sel)
+            self.btn_eliminar_def.setEnabled(has_sel)
+            self.btn_eliminar.setEnabled(False)
+            self.btn_editar.setEnabled(False)
+        else:
+            self.btn_eliminar.setEnabled(has_sel)  # "Eliminar" = enviar a papelera
+            self.btn_editar.setEnabled(has_sel)
+            self.btn_restaurar.setEnabled(False)
+            self.btn_eliminar_def.setEnabled(False)
 
     def update_summary_display(self, summary_data: dict):
         self.total_ingresos_display.setText(
@@ -613,15 +674,104 @@ class ContabilidadWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
 
-    def get_selected_record_ids(self) -> list:
-        ids = []
+    def get_selected_record_ids(self) -> list[int]:
         sel = self.table_view.selectionModel().selectedRows()
+        ids = []
         for idx in sel:
-            row = idx.row()
-            record_id = self.contabilidad_table_model.get_record_id(row)
-            if record_id:
-                ids.append(int(record_id))
+            rid = self.contabilidad_table_model.get_record_id(idx.row())
+            if rid is not None:
+                ids.append(int(rid))
         return ids
+
+    def toggle_papelera_view(self):
+        self.mostrando_papelera = not self.mostrando_papelera
+
+        if self.mostrando_papelera:
+            self.title_label.setText("Gestión de Contabilidad - Papelera")
+            self.btn_papelera.setText("Volver a Activos")
+            # Ocultar acciones normales que no aplican en papelera
+            self.btn_editar.setVisible(False)
+            # Cambiar botones de acción
+            self.btn_restaurar.setVisible(True)
+            self.btn_eliminar_def.setVisible(True)
+        else:
+            self.title_label.setText("Gestión de Contabilidad")
+            self.btn_papelera.setText("Ver Papelera")
+            self.btn_editar.setVisible(True)
+            self.btn_restaurar.setVisible(False)
+            self.btn_eliminar_def.setVisible(False)
+
+        # Recargar datos con flag
+        self.update_contabilidad_display()
+
+    def on_enviar_a_papelera_clicked(self):
+        ids = self.get_selected_record_ids()
+        if not ids:
+            QMessageBox.warning(
+                self, "Selección inválida", "Selecciona al menos un registro."
+            )
+            return
+        resp = QMessageBox.question(
+            self,
+            "Enviar a Papelera",
+            f"¿Enviar {len(ids)} registro(s) a la papelera?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if resp == QMessageBox.Yes:
+            self.controller.enviar_a_papelera(
+                ids, refresh_kwargs=self._current_refresh_kwargs()
+            )
+
+    def on_restaurar_clicked(self):
+        ids = self.get_selected_record_ids()
+        if not ids:
+            QMessageBox.warning(
+                self, "Selección inválida", "Selecciona al menos un registro."
+            )
+            return
+        self.controller.restaurar_registros(
+            ids, refresh_kwargs=self._current_refresh_kwargs(mostrando_papelera=True)
+        )
+
+    def on_eliminar_definitivo_clicked(self):
+        ids = self.get_selected_record_ids()
+        if not ids:
+            QMessageBox.warning(
+                self, "Selección inválida", "Selecciona al menos un registro."
+            )
+            return
+        resp = QMessageBox.question(
+            self,
+            "Eliminar Definitivamente",
+            f"¿Eliminar definitivamente {len(ids)} registro(s)? Esta acción no se puede deshacer.",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if resp == QMessageBox.Yes:
+            self.controller.eliminar_definitivo(
+                ids,
+                refresh_kwargs=self._current_refresh_kwargs(mostrando_papelera=True),
+            )
+
+    def _current_refresh_kwargs(self, mostrando_papelera: bool | None = None) -> dict:
+        if mostrando_papelera is None:
+            mostrando_papelera = self.mostrando_papelera
+        cliente_id = self.cliente_filter_combo.currentData()
+        proceso_id = self.proceso_input.currentData()
+        tipo_contable_id = self.tipo_input.currentData()
+        search_term = (
+            self.cliente_search_input.text().strip()
+            if self.is_search_mode_active
+            else self.search_input.text().strip()
+        )
+        if self.is_search_mode_active:
+            cliente_id = None
+        return dict(
+            cliente_id=cliente_id,
+            proceso_id=proceso_id,
+            search_term=search_term,
+            tipo_contable_id=tipo_contable_id,
+            mostrando_papelera=mostrando_papelera,
+        )
 
     def reselect_row_by_id(self, record_id: int):
         for row in range(self.contabilidad_table_model.rowCount()):
@@ -630,3 +780,24 @@ class ContabilidadWidget(QWidget):
                 self.table_view.selectRow(row)
                 self.table_view.scrollTo(self.contabilidad_table_model.index(row, 0))
                 break
+
+    def eventFilter(self, source, event):
+        if source is self.table_view.viewport():
+            if event.type() == event.MouseMove:
+                index = self.table_view.indexAt(event.pos())
+                if index.isValid() and index != self._last_hovered_index:
+                    self._last_hovered_index = index
+                    text = str(index.data())
+                    if text and len(text) > 15:  # 👈 solo mostrar si el texto es largo
+                        self.custom_tooltip_label.setText(text)
+                        self.custom_tooltip_label.adjustSize()
+                        self.custom_tooltip_label.move(
+                            self.mapToGlobal(event.pos() + QPoint(20, 20))
+                        )
+                        self.custom_tooltip_label.show()
+                        self.hide_tooltip_timer.start(3000)  # se oculta tras 3 seg
+                    else:
+                        self.custom_tooltip_label.hide()
+            elif event.type() == event.Leave:
+                self.custom_tooltip_label.hide()
+        return super().eventFilter(source, event)

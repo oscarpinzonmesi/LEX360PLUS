@@ -1,3 +1,4 @@
+from datetime import datetime, date
 from PyQt5.QtWidgets import (
     QDialog,
     QFormLayout,
@@ -220,36 +221,123 @@ class ContabilidadEditorDialog(QDialog):
         elif cliente_id is None:
             self.populate_proceso_combo([])
 
+    def accept(self):
+        """
+        Validaciones antes de aceptar y cerrar el diálogo.
+        Si algún campo no es válido, se muestra advertencia y el diálogo permanece abierto.
+        """
+        datos = self.get_values()
+        if datos is None:
+            # 🚫 Datos inválidos → no cerramos el diálogo
+            return
+
+        # 👌 Todo válido → cerramos normalmente
+        super().accept()
+
     def load_data_into_form(self):
-        if self.contabilidad_data:
-            cliente_nombre = self.contabilidad_data[1]
-            idx_cliente = self.cliente_input.findText(cliente_nombre)
-            self.cliente_input.setCurrentIndex(idx_cliente if idx_cliente != -1 else 0)
-            tipo_nombre = self.contabilidad_data[3]
-            idx_tipo = self.tipo_input.findText(tipo_nombre)
-            self.tipo_input.setCurrentIndex(idx_tipo if idx_tipo != -1 else 0)
-            self.descripcion_input.setText(self.contabilidad_data[4])
-            valor_str = str(self.contabilidad_data[5]).replace("$", "").replace(",", "")
-            self.valor_input.setText(valor_str)
-            fecha_qdate = QDate.fromString(self.contabilidad_data[6], "yyyy-MM-dd")
-            if fecha_qdate.isValid():
-                self.fecha_input.setDate(fecha_qdate)
+        try:
+            data = self.contabilidad_data
+            if not data:
+                return
+
+            # -----------------------------
+            # Cliente: primero por nombre, luego por ID (fallback)
+            # -----------------------------
+            cliente_nombre = str(data[1]) if len(data) > 1 else ""
+            idx_cliente = self.cliente_input.findText(
+                cliente_nombre, Qt.MatchFixedString
+            )
+            if idx_cliente == -1 and len(data) > 7 and data[7]:
+                idx_cliente = self.cliente_input.findData(data[7])  # cliente_id
+            if idx_cliente != -1:
+                self.cliente_input.setCurrentIndex(idx_cliente)
+
+            # -----------------------------
+            # Tipo contable: por nombre y fallback por ID
+            # -----------------------------
+            tipo_nombre = str(data[3]) if len(data) > 3 else ""
+            idx_tipo = self.tipo_input.findText(tipo_nombre, Qt.MatchFixedString)
+            if idx_tipo == -1 and len(data) > 9 and data[9]:
+                idx_tipo = self.tipo_input.findData(data[9])  # tipo_contable_id
+            if idx_tipo != -1:
+                self.tipo_input.setCurrentIndex(idx_tipo)
+
+            # -----------------------------
+            # Proceso: por radicado y fallback por ID (si tienes combo de proceso)
+            # -----------------------------
+            if hasattr(self, "proceso_input"):
+                radicado = data[2] if len(data) > 2 else None
+                idx_proc = -1
+                if radicado:
+                    idx_proc = self.proceso_input.findText(
+                        str(radicado), Qt.MatchFixedString
+                    )
+                if idx_proc == -1 and len(data) > 8 and data[8]:
+                    idx_proc = self.proceso_input.findData(data[8])  # proceso_id
+                if idx_proc != -1:
+                    self.proceso_input.setCurrentIndex(idx_proc)
+
+            # -----------------------------
+            # Descripción
+            # -----------------------------
+            self.descripcion_input.setText(
+                str(data[4]) if len(data) > 4 and data[4] is not None else ""
+            )
+
+            # -----------------------------
+            # Valor (normaliza a string)
+            # -----------------------------
+            val = data[5] if len(data) > 5 else 0
+            try:
+                if isinstance(val, str):
+                    val_str = val.replace("$", "").replace(",", "").strip()
+                else:
+                    val_str = f"{float(val):.2f}"
+            except Exception:
+                val_str = str(val)
+            self.valor_input.setText(val_str)
+
+            # -----------------------------
+            # Fecha (admite datetime/date/str ISO)
+            # -----------------------------
+            fecha_val = data[6] if len(data) > 6 else None
+            qdate = None
+            if isinstance(fecha_val, (datetime, date)):
+                qdate = QDate(fecha_val.year, fecha_val.month, fecha_val.day)
+            elif isinstance(fecha_val, str):
+                qdate = QDate.fromString(fecha_val, "yyyy-MM-dd")
+                if not qdate.isValid():  # intento extra por si llega con otro ISO
+                    qdate = QDate.fromString(fecha_val, Qt.ISODate)
+
+            if qdate and qdate.isValid():
+                self.fecha_input.setDate(qdate)
+
+            # DEBUG opcional:
+            # print("DEBUG tipo:", self.tipo_input.currentData(), self.tipo_input.currentText())
+
+        except Exception as e:
+            import traceback
+
+            print("❌ ERROR en load_data_into_form:", e)
+            traceback.print_exc()
 
     def get_values(self):
+        """
+        Extrae los valores del formulario.
+        No cierra el diálogo, solo devuelve None si hay errores.
+        """
         cliente_id = self.cliente_input.currentData()
         if cliente_id == SEARCH_MODE or cliente_id is None:
             QMessageBox.warning(
-                self,
-                "Advertencia",
-                "Debe seleccionar un cliente válido para guardar el registro.",
+                self, "Advertencia", "Debe seleccionar un cliente válido."
             )
             return None
+
         tipo_id = self.tipo_input.currentData()
         if tipo_id is None:
-            QMessageBox.warning(
-                self, "Advertencia", "Debe seleccionar un tipo de registro válido."
-            )
+            QMessageBox.warning(self, "Advertencia", "Debe seleccionar un tipo válido.")
             return None
+
         valor_str = self.valor_input.text().strip()
         if not valor_str:
             QMessageBox.warning(
@@ -258,22 +346,37 @@ class ContabilidadEditorDialog(QDialog):
             return None
         try:
             valor_numeric = float(valor_str)
+            if valor_numeric <= 0:
+                QMessageBox.warning(
+                    self, "Advertencia", "El valor debe ser mayor que 0."
+                )
+                return None
         except ValueError:
             QMessageBox.warning(
                 self, "Advertencia", "El campo Valor debe ser un número válido."
             )
             return None
-        datos = {
+
+        if not self.descripcion_input.text().strip():
+            QMessageBox.warning(
+                self, "Advertencia", "La descripción no puede estar vacía."
+            )
+            return None
+
+        if not self.fecha_input.date().isValid():
+            QMessageBox.warning(
+                self, "Advertencia", "Debe seleccionar una fecha válida."
+            )
+            return None
+
+        return {
             "cliente_id": cliente_id,
             "proceso_id": self.proceso_input.currentData(),
-            "tipo_contable_id": tipo_id,  # <--- corregido
+            "tipo_contable_id": tipo_id,
             "descripcion": self.descripcion_input.text().strip(),
-            "monto": valor_numeric,  # <--- ojo: en el modelo se llama `monto`, no `valor`
+            "monto": valor_numeric,
             "fecha": self.fecha_input.date().toPyDate(),
         }
-
-        print(f"DEBUG DIALOG: Valores devueltos: {datos}")
-        return datos
 
     def on_cliente_combo_changed(self, index):
         selected_data = self.cliente_input.itemData(index)

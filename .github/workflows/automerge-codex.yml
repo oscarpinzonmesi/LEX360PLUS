@@ -26,6 +26,15 @@ jobs:
           git config --global user.name "codex-bot"
           git config --global user.email "codex-bot@github.com"
 
+      # 🚀 Nuevo paso: ejecutar Black antes del merge
+      - name: Run Black Formatter
+        run: |
+          python -m pip install --upgrade pip
+          pip install black
+          black .
+          git add .
+          git commit -m "Apply Black formatting [Codex]" || echo "No changes to commit"
+
       - name: Merge PR using ours strategy
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
