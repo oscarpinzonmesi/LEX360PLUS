@@ -59,8 +59,8 @@ class ContabilidadLogic:
         with self.db_manager() as session:
             count = (
                 session.query(Contabilidad)
-                .filter(Contabilidad.id.in_(ids), Contabilidad.is_active == True)
-                .update({Contabilidad.is_active: False}, synchronize_session=False)
+                .filter(Contabilidad.id.in_(ids), Contabilidad.eliminado == False)
+                .update({Contabilidad.eliminado: True}, synchronize_session=False)
             )
             session.commit()
             return count
@@ -69,8 +69,8 @@ class ContabilidadLogic:
         with self.db_manager() as session:
             count = (
                 session.query(Contabilidad)
-                .filter(Contabilidad.id.in_(ids), Contabilidad.is_active == False)
-                .update({Contabilidad.is_active: True}, synchronize_session=False)
+                .filter(Contabilidad.id.in_(ids), Contabilidad.eliminado == True)
+                .update({Contabilidad.eliminado: False}, synchronize_session=False)
             )
             session.commit()
             return count

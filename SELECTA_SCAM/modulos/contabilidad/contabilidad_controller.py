@@ -100,52 +100,6 @@ class ContabilidadController(QObject):
         proceso_id: int = None,
         search_term: str = None,
         tipo_contable_id: int = None,
-        mostrando_papelera: bool = False,  # 🔎 nuevo
-    ):
-        """
-        Recupera registros filtrados, actualiza la tabla y emite el resumen de totales.
-        """
-        try:
-            records = self.contabilidad_logic.get_contabilidad_data_for_display(
-                cliente_id=cliente_id,
-                proceso_id=proceso_id,
-                search_term=search_term,
-                tipo_contable_id=tipo_contable_id,
-                mostrando_papelera=mostrando_papelera,  # 🔎 pasar a la lógica
-            )
-
-            self.data_updated.emit(records)
-            self.logger.info(
-                f"ContabilidadController: Registros emitidos ({len(records)})."
-            )
-
-            # Resumen (solo para activos; si quieres también en papelera, quita el if)
-            total_ingresos, total_gastos = 0.0, 0.0
-            if not mostrando_papelera:
-                for record in records:
-                    valor = float(record[5])
-                    tipo_str = str(record[3]).lower()
-                    if "ingreso" in tipo_str:
-                        total_ingresos += valor
-                    else:
-                        total_gastos += valor
-
-            summary_data = {
-                "total_ingresos": total_ingresos,
-                "total_gastos": total_gastos,
-                "saldo": total_ingresos - total_gastos,
-            }
-            self.summary_data_loaded.emit(summary_data)
-        except Exception as e:
-            self.logger.exception("Error al cargar registros/resumen")
-            self.operation_failed.emit(f"Error al cargar datos y resumen: {str(e)}")
-
-    def get_contabilidad_records_sync(
-        self,
-        cliente_id: int = None,
-        proceso_id: int = None,
-        search_term: str = None,
-        tipo_contable_id: int = None,
         mostrando_papelera: bool = False,  # 🔎 añadido
     ):
         """

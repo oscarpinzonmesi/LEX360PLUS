@@ -122,7 +122,7 @@ class Contabilidad(Base):
     referencia_pago = Column(String, nullable=True)
     esta_pagado = Column(Boolean, default=False)
     fecha_pago = Column(DateTime, nullable=True)
-    is_active = Column(Boolean, default=True)
+    eliminado = Column(Boolean, default=False)
 
     fecha = Column(DateTime, default=datetime.utcnow)
 
